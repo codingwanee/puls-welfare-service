@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: wsbd
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/welfare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123o}
+    hikari:
+      read-only: true
+      auto-commit: false
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate.connection.provider_disables_autocommit: true
+  jackson:
+    default-property-inclusion: non_null
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /api/wsbd
+management:
+  endpoints.web.exposure.include: health,info,metrics,prometheus
+  endpoint.health.probes.enabled: true
+
+app:
+  policy:
+    share-url-template: ${POLICY_SHARE_URL_TEMPLATE:https://app.example.com/policies/{policyVersionId}}
+    default-sido: ${DEFAULT_SIDO:서울특별시}
+    sort:
+      version: ${POLICY_SORT_VERSION:v1}
+      internal-first: ${POLICY_INTERNAL_FIRST:true}
+  cache:
+    enabled: ${POLICY_CACHE_ENABLED:false}
+    cluster-name: ${HAZELCAST_CLUSTER_NAME:clovr-welfare-local}
+    tcp-ip-enabled: ${HAZELCAST_TCP_ENABLED:true}
+    members: ${HAZELCAST_MEMBERS:127.0.0.1:5701,127.0.0.1:5702}
+    port: ${HAZELCAST_PORT:5701}
+    port-auto-increment: ${HAZELCAST_PORT_AUTO_INCREMENT:true}
+    backup-count: 1
+    max-size: ${POLICY_CACHE_MAX_SIZE:10000}
+    detail-ttl-seconds: ${POLICY_DETAIL_TTL_SECONDS:300}
+    epoch-poll-millis: ${POLICY_EPOCH_POLL_MILLIS:1000}
+    epoch-poll-max-stale-millis: ${POLICY_EPOCH_POLL_MAX_STALE_MILLIS:5000}
