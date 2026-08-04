@@ -43,12 +43,12 @@ class HazelcastPolicyCacheTest {
             val metrics2 = SimpleMeterRegistry()
             val cache1 = HazelcastPolicyCache(node1, metrics1, Clock.systemUTC())
             val cache2 = HazelcastPolicyCache(node2, metrics2, Clock.systemUTC())
-            val detail = PolicyDtoMapper(PolicyProperties("https://share/{policyVersionId}")).toDetail(policyRecord())
-            cache1.putDetail("v2:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
-            await().untilAsserted { assertThat(cache2.getDetail("v2:policy:1")?.value).isEqualTo(detail) }
-            assertThat(metrics2.counter("policy.cache.requests", "map", PolicyCacheMaps.DETAIL_V2, "result", "hit").count())
+            val detail = PolicyDtoMapper().toDetail(policyRecord())
+            cache1.putDetail("v3:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
+            await().untilAsserted { assertThat(cache2.getDetail("v3:policy:1")?.value).isEqualTo(detail) }
+            assertThat(metrics2.counter("policy.cache.requests", "map", PolicyCacheMaps.DETAIL_V3, "result", "hit").count())
                 .isGreaterThanOrEqualTo(1.0)
-            assertThat(cache1.getDetail("v2:e42:policy:1")).isNull()
+            assertThat(cache1.getDetail("v3:e42:policy:1")).isNull()
         } finally {
             node2.shutdown()
             node1.shutdown()
@@ -64,8 +64,8 @@ class HazelcastPolicyCacheTest {
         val metrics = SimpleMeterRegistry()
         val cache = HazelcastPolicyCache(node, metrics, Clock.systemUTC())
         node.shutdown()
-        assertThat(cache.getDetail("v2:policy:1")).isNull()
-        assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V2).count()).isEqualTo(1.0)
+        assertThat(cache.getDetail("v3:policy:1")).isNull()
+        assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V3).count()).isEqualTo(1.0)
 
         val objectMapper = jacksonObjectMapper().findAndRegisterModules()
         val policyProperties = PolicyProperties("https://share/{policyVersionId}")
@@ -82,7 +82,7 @@ class HazelcastPolicyCacheTest {
             override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
         }
         val service = PolicyQueryService(
-            repository, PolicyDtoMapper(policyProperties), PolicySortStrategy(policyProperties), CursorCodec(objectMapper),
+            repository, PolicyDtoMapper(), PolicySortStrategy(policyProperties), CursorCodec(objectMapper),
             cache, CacheLoadCoordinator(), PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(1) }, properties, policyProperties,
             RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json")), Clock.systemUTC(),
         )

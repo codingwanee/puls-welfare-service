@@ -27,7 +27,7 @@ class HazelcastConfig {
                 isEnabled = properties.tcpIpEnabled
                 members = properties.members
             }
-            addMapConfig(mapConfig(PolicyCacheMaps.DETAIL_V2, properties.detailTtlSeconds, properties))
+            addMapConfig(mapConfig(PolicyCacheMaps.DETAIL_V3, properties.detailTtlSeconds, properties))
         }
         return Hazelcast.newHazelcastInstance(config)
     }
@@ -44,6 +44,6 @@ class HazelcastConfig {
 }
 
 object PolicyCacheMaps {
-    const val DETAIL_V2 = "app-policy-detail-v2"
-    const val KEY_PREFIX = "v2:"
+    const val DETAIL_V3 = "app-policy-detail-v3"
+    const val KEY_PREFIX = "v3:"
 }

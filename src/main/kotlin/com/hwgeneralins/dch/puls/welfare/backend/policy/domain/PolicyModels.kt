@@ -52,20 +52,12 @@ data class PolicyListItemDto(
     val id: Long,
     val serviceName: String,
     val servicePurposeSummary: String?,
-//    val supportBenefitSummary: String?,
-//    val applicationDeadline: String?,
     val competentAgency: String?,
-//    val sido: String?,
-//    val sigungu: String?,
-//    val regionLabel: String?,
-//    val dataType: String,
 ) : Serializable
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 data class PolicyDetailDto(
     val id: Long,
-//    val serviceId: String,
-//    val dataType: String,
     val serviceName: String,
     val servicePurposeSummary: String?,
     val supportTarget: String?,
@@ -79,17 +71,11 @@ data class PolicyDetailDto(
     val receivingAgencyName: String?,
     val contact: String?,
     val onlineApplicationUrl: String?,
-//    val siteUrl: String?,
     val updatedDate: LocalDate?,
     val competentAgency: String?,
     val administrativeRules: String?,
     val localOrdinances: String?,
     val statutes: String?,
-//    val sido: String?,
-//    val sigungu: String?,
-//    val regionLabel: String?,
-//    val landingUrl: String?,
-//    val shareUrl: String,
 ) : Serializable
 
 data class CursorPageDto<T>(

@@ -22,8 +22,8 @@ class HazelcastPolicyCache(
         registry.gauge("policy.cache.hazelcast.member.count", memberCount)
     }
 
-    override fun getDetail(key: String): CacheEnvelope<PolicyDetailDto>? = read(PolicyCacheMaps.DETAIL_V2, key)
-    override fun putDetail(key: String, value: CacheEnvelope<PolicyDetailDto>) = write(PolicyCacheMaps.DETAIL_V2, key, value)
+    override fun getDetail(key: String): CacheEnvelope<PolicyDetailDto>? = read(PolicyCacheMaps.DETAIL_V3, key)
+    override fun putDetail(key: String, value: CacheEnvelope<PolicyDetailDto>) = write(PolicyCacheMaps.DETAIL_V3, key, value)
     private inline fun <reified T : java.io.Serializable> read(mapName: String, key: String): CacheEnvelope<T>? {
         return try {
             updateMemberCount()

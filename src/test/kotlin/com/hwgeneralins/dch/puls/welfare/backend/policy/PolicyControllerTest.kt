@@ -35,7 +35,7 @@ class PolicyControllerTest {
     private val properties = PolicyProperties("https://share/{policyVersionId}")
     private val catalog = RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json"))
     private val service = PolicyQueryService(
-        repository, PolicyDtoMapper(properties), PolicySortStrategy(properties), CursorCodec(objectMapper),
+        repository, PolicyDtoMapper(), PolicySortStrategy(properties), CursorCodec(objectMapper),
         EmptyCache(), com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(),
         PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(1) },
         PolicyCacheProperties(enabled = false), properties, catalog,
@@ -59,7 +59,7 @@ class PolicyControllerTest {
     }
 
     @Test
-    fun `detail exposes canonical fields including nulls and preferred button URL`() {
+    fun `detail exposes only selected canonical fields including nulls`() {
         repository.detail = policyRecord().copy(
             receivingAgencyName = null,
             onlineApplicationUrl = null,
@@ -73,8 +73,11 @@ class PolicyControllerTest {
                 jsonPath("$.supportBenefitSummary") { value("30만원") }
                 jsonPath("$.receivingAgencyName") { value(null) }
                 jsonPath("$.onlineApplicationUrl") { value(null) }
-                jsonPath("$.siteUrl") { value("https://site.example/1") }
-                jsonPath("$.landingUrl") { value("https://site.example/1") }
+                jsonPath("$.serviceId") { doesNotExist() }
+                jsonPath("$.dataType") { doesNotExist() }
+                jsonPath("$.siteUrl") { doesNotExist() }
+                jsonPath("$.landingUrl") { doesNotExist() }
+                jsonPath("$.shareUrl") { doesNotExist() }
                 jsonPath("$.tabs") { doesNotExist() }
                 jsonPath("$.title") { doesNotExist() }
             }
