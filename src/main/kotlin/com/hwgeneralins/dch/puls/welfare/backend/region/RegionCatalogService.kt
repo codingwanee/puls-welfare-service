@@ -3,6 +3,7 @@ package com.hwgeneralins.dch.puls.welfare.backend.region
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RegionCatalogDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.SidoDto
+import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.SigunguDto
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.Resource
 import org.springframework.stereotype.Service
@@ -16,8 +17,8 @@ class RegionCatalogService(
         val root = objectMapper.readTree(input)
         RegionCatalogDto(root["sido"].map { sido ->
             SidoDto(
-                name = sido["sidoName"].asText(),
-                sigungu = sido["sigungu"].map { it["sigunguName"].asText() },
+                sidoName = sido["sidoName"].asText(),
+                sigungu = sido["sigungu"].map { SigunguDto(it["sigunguName"].asText()) },
             )
         })
     }
@@ -25,6 +26,6 @@ class RegionCatalogService(
     fun catalog(): RegionCatalogDto = catalog
 
     fun contains(sido: String, sigungu: String?): Boolean = catalog.sido.any {
-        it.name == sido && (sigungu == null || sigungu in it.sigungu)
+        it.sidoName == sido && (sigungu == null || it.sigungu.any { item -> item.sigunguName == sigungu })
     }
 }

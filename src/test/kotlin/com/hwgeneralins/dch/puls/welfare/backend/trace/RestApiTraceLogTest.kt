@@ -67,6 +67,8 @@ class RestApiTraceLogTest {
         RestApiTraceLog.requestLog(joinPoint, null)
         RestApiTraceLog.responseLog(joinPoint, null, emptyMap<String, Any>())
 
+        assertThat(output.out).contains("REQ [] GET /api/wsbd/v1/policies")
+        assertThat(output.out).contains("RES [] GET /api/wsbd/v1/policies")
         assertThat(output.out).contains("region=서울특별시&region=부산광역시&keyword=정책  위조로그")
         assertThat(output.out).doesNotContain("정책\r\n위조로그")
     }

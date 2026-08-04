@@ -87,7 +87,31 @@ class PolicyControllerTest {
     fun `true missing row is 404 with stable code`() {
         repository.detail = null
         mvc.get("/v1/policies/999")
-            .andExpect { status { isNotFound() }; jsonPath("$.businessCode") { value("POLICY_NOT_FOUND") } }
+            .andExpect {
+                status { isNotFound() }
+                jsonPath("$.status") { value(404) }
+                jsonPath("$.code") { value("POLICY_NOT_FOUND") }
+                jsonPath("$.message") { value("정책을 찾을 수 없습니다.") }
+                jsonPath("$.detail") { value(null) }
+                jsonPath("$.path") { value("/v1/policies/999") }
+                jsonPath("$.errors.length()") { value(0) }
+                jsonPath("$.businessCode") { doesNotExist() }
+            }
+    }
+
+    @Test
+    fun `invalid parameter uses admin compatible error envelope`() {
+        mvc.get("/v1/policies") { param("limit", "invalid") }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.timestamp") { exists() }
+                jsonPath("$.status") { value(400) }
+                jsonPath("$.code") { value("INVALID_REQUEST") }
+                jsonPath("$.message") { value("요청값을 확인해 주세요.") }
+                jsonPath("$.detail") { value("limit 값 'invalid'의 형식이 올바르지 않습니다.") }
+                jsonPath("$.path") { value("/v1/policies") }
+                jsonPath("$.errors.length()") { value(0) }
+            }
     }
 
     @Test
@@ -96,7 +120,7 @@ class PolicyControllerTest {
         mvc.get("/v1/policies/1")
             .andExpect {
                 status { isGone() }
-                jsonPath("$.businessCode") { value("POLICY_NOT_AVAILABLE") }
+                jsonPath("$.code") { value("POLICY_NOT_AVAILABLE") }
                 content { string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("REVIEW"))) }
             }
     }
@@ -115,7 +139,7 @@ class PolicyControllerTest {
             mvc.get("/v1/policies/1")
                 .andExpect {
                     status { isGone() }
-                    jsonPath("$.businessCode") { value("POLICY_NOT_AVAILABLE") }
+                    jsonPath("$.code") { value("POLICY_NOT_AVAILABLE") }
                     content { string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString(policy.policyStatus))) }
                 }
         }

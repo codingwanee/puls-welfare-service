@@ -11,7 +11,7 @@ Swagger UI는 `http://localhost:8081/api/wsbd/swagger-ui/index.html`, OpenAPI JS
 `http://localhost:8081/api/wsbd/v3/api-docs`에서 확인할 수 있다.
 
 모든 serving controller 요청은 `TRACE_LOGGER`에 요청·응답·처리시간과 trace ID를 기록한다.
-클라이언트가 `X-TRACE-ID` 헤더를 전달하면 해당 값을 사용하고, 없으면 서버가 UUID를 생성한다.
+클라이언트가 `X-TRACE-ID` 헤더를 전달하면 해당 값을 사용하고, 없으면 trace ID를 빈 값(`[]`)으로 기록한다.
 query parameter는 servlet에서 UTF-8 디코딩된 값을 사용해 한글 그대로 기록한다.
 상세 body 로그는 일반 애플리케이션 logger의 DEBUG 레벨에서만 출력된다.
 

@@ -13,7 +13,6 @@ import org.springframework.expression.spel.standard.SpelExpressionParser
 import org.springframework.http.ResponseEntity
 import org.springframework.web.context.request.RequestContextHolder
 import org.springframework.web.context.request.ServletRequestAttributes
-import java.util.UUID
 
 object RestApiTraceLog {
     private const val LOGGER_NAME_TRACE = "TRACE_LOGGER"
@@ -93,7 +92,7 @@ object RestApiTraceLog {
 
     private fun prepareTraceId(request: HttpServletRequest) {
         if (MDC.get(MDC_KEY_TRACE_ID).isNullOrBlank()) {
-            MDC.put(MDC_KEY_TRACE_ID, request.getHeader(TRACE_ID_HEADER)?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString())
+            MDC.put(MDC_KEY_TRACE_ID, request.getHeader(TRACE_ID_HEADER)?.takeIf { it.isNotBlank() }.orEmpty())
         }
     }
 
