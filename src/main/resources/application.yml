@@ -29,7 +29,6 @@ management:
 
 app:
   policy:
-    share-url-template: ${POLICY_SHARE_URL_TEMPLATE:https://app.example.com/policies/{policyVersionId}}
     default-sido: ${DEFAULT_SIDO:서울특별시}
     sort:
       version: ${POLICY_SORT_VERSION:v1}

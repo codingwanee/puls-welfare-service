@@ -32,7 +32,7 @@ import java.time.ZoneId
 class PolicyControllerTest {
     private val repository = MutablePolicyRepository()
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
-    private val properties = PolicyProperties("https://share/{policyVersionId}")
+    private val properties = PolicyProperties()
     private val catalog = RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json"))
     private val service = PolicyQueryService(
         repository, PolicyDtoMapper(), PolicySortStrategy(properties), CursorCodec(objectMapper),

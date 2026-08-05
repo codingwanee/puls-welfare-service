@@ -9,7 +9,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 
 class PolicySortStrategyTest {
-    private val strategy = PolicySortStrategy(PolicyProperties("https://x/{policyVersionId}"))
+    private val strategy = PolicySortStrategy(PolicyProperties())
 
     @Test
     fun `internal then group then deadline then newest input and id`() {

@@ -37,7 +37,7 @@ class PolicyQueryServiceTest {
     private val zone = ZoneId.of("Asia/Seoul")
     private val clock = Clock.fixed(now, zone)
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
-    private val policyProperties = PolicyProperties("https://share/{policyVersionId}")
+    private val policyProperties = PolicyProperties()
     private val catalog = RegionCatalogService(
         objectMapper,
         ClassPathResource("regions/korea_sido_sigungu_20260630.json"),
