@@ -1,3 +1,6 @@
+import org.gradle.jvm.tasks.Jar
+import org.springframework.boot.gradle.tasks.bundling.BootJar
+
 plugins {
     kotlin("jvm") version "1.9.25"
     kotlin("plugin.spring") version "1.9.25"
@@ -7,7 +10,14 @@ plugins {
 }
 
 group = "com.hwgeneralins.dch"
-version = "0.0.1-SNAPSHOT"
+val localVersion = providers.fileContents(layout.projectDirectory.file("VERSION"))
+    .asText
+    .map { "${it.trim()}-SNAPSHOT" }
+version = providers.gradleProperty("buildVersion").orElse(localVersion).get()
+
+val buildId = providers.gradleProperty("buildId").orElse("local")
+val buildCommit = providers.gradleProperty("buildCommit").orElse("unknown")
+val buildBranch = providers.gradleProperty("buildBranch").orElse("local")
 
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 repositories { mavenCentral() }
@@ -33,3 +43,19 @@ dependencies {
 
 kotlin { compilerOptions { freeCompilerArgs.addAll("-Xjsr305=strict") } }
 tasks.withType<Test> { useJUnitPlatform() }
+
+tasks.named<Jar>("jar") {
+    enabled = false
+}
+
+tasks.named<BootJar>("bootJar") {
+    manifest {
+        attributes(
+            "Implementation-Title" to rootProject.name,
+            "Implementation-Version" to project.version.toString(),
+            "Build-Id" to buildId.get(),
+            "Build-Commit" to buildCommit.get(),
+            "Build-Branch" to buildBranch.get(),
+        )
+    }
+}
