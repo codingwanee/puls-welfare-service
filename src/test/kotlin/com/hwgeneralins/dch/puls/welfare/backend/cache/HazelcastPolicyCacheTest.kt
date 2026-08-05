@@ -68,7 +68,7 @@ class HazelcastPolicyCacheTest {
         assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V3).count()).isEqualTo(1.0)
 
         val objectMapper = jacksonObjectMapper().findAndRegisterModules()
-        val policyProperties = PolicyProperties("https://share/{policyVersionId}")
+        val policyProperties = PolicyProperties()
         val repository = object : PolicyReadRepository {
             override fun findById(id: Long): PolicyRecord = policyRecord(id = id)
             override fun findVisiblePage(

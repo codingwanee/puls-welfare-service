@@ -4,7 +4,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 
 @ConfigurationProperties("app.policy")
 data class PolicyProperties(
-    val shareUrlTemplate: String,
     val defaultSido: String = "서울특별시",
     val sort: SortProperties = SortProperties(),
 ) {
