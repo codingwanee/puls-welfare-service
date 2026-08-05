@@ -24,7 +24,7 @@ class PolicyController(
     private val regionCatalogService: RegionCatalogService,
 ) {
     @Operation(summary = "정책 목록 조회", description = "지역 조건과 cursor를 사용하여 게시 정책을 조회합니다.")
-    @GetMapping("/policies")
+    @GetMapping("/welfare-policies")
     fun list(
         @Parameter(
             description = "시도명. 생략하면 서버 기본 시도인 서울특별시를 사용합니다.",
@@ -50,7 +50,7 @@ class PolicyController(
     ): CursorPageDto<PolicyListItemDto> = policyQueryService.list(sido, sigungu, cursor, limit)
 
     @Operation(summary = "정책 상세 조회", description = "게시 중이며 현재 노출 가능한 정책의 상세 정보를 조회합니다.")
-    @GetMapping("/policies/{id:\\d+}")
+    @GetMapping("/welfare-policies/{id:\\d+}")
     fun detail(
         @Parameter(description = "정책 ID", example = "94", required = true)
         @PathVariable id: Long,

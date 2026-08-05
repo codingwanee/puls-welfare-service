@@ -43,7 +43,7 @@ data class ApiErrorResponse(
     val message: String,
     @field:Schema(description = "오류 상세 메시지", nullable = true)
     val detail: String? = null,
-    @field:Schema(description = "요청 경로", example = "/api/wsbd/v1/policies")
+    @field:Schema(description = "요청 경로", example = "/api/wsbd/v1/welfare-policies")
     val path: String,
     @field:Schema(description = "필드별 검증 오류")
     val errors: List<ApiFieldError> = emptyList(),

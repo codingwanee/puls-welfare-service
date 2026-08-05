@@ -17,8 +17,8 @@ query parameter는 servlet에서 UTF-8 디코딩된 값을 사용해 한글 그�
 
 | API | 설명 |
 |---|---|
-| `GET /policies?sido=&sigungu=&cursor=&limit=20` | stable keyset cursor 목록, 최대 100건 |
-| `GET /policies/{id}` | 정책 상세 |
+| `GET /welfare-policies?sido=&sigungu=&cursor=&limit=20` | stable keyset cursor 목록, 최대 100건 |
+| `GET /welfare-policies/{id}` | 정책 상세 |
 | `GET /regions` | 법정동 원본 기반 전체 시도/시군구 카탈로그 |
 
 `sido`가 없으면 서버 기본값(`DEFAULT_SIDO`, 기본 서울특별시)을 쓴다. 앱은 지역 미설정 시 서울을 명시적으로 요청하는 것을 권장한다. `sigungu`가 있으면 카탈로그에 등록된 시도/시군구 조합이어야 한다. `sigungu`를 생략하면 전국 정책 + 해당 시도 공통 정책 + 해당 시도 산하 모든 시군구 정책을 조회한다. `sigungu`를 지정하면 전국 정책 + 해당 시도 공통 정책 + 지정한 시군구 정책만 조회한다.
@@ -37,7 +37,7 @@ HAZELCAST_CLUSTER_NAME=welfare-prod HAZELCAST_MEMBERS=10.0.1.10:5701,10.0.1.11:5
 HAZELCAST_PORT=5701 SERVER_PORT=8081 ./gradlew bootRun
 ```
 
-홈 화면도 별도 API 없이 `GET /policies?limit=10`의 `items`를 사용한다.
+홈 화면도 별도 API 없이 `GET /welfare-policies?limit=10`의 `items`를 사용한다.
 
 두 번째 프로세스도 같은 cluster-name/member 목록으로 실행한다. multicast와 auto-detection은 꺼져 있고 TCP/IP seed를 사용한다. Kubernetes/Eureka 등 discovery가 필요한 환경에서는 `HazelcastConfig`의 join discovery를 배포 프로필로 교체하되 cluster-name은 환경별로 분리한다. map은 상세 조회용 `app-policy-detail-v3` 하나이며, key는 `v3:e{epoch}:` prefix이고 backup-count=1, PER_NODE bounded LRU, map TTL이 적용된다. 목록 응답·엔티티·회원별 응답·읽음 상태·락은 저장하지 않는다.
 

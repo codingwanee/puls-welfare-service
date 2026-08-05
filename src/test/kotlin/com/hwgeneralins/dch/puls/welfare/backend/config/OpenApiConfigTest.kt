@@ -12,10 +12,10 @@ class OpenApiConfigTest {
         val listOperation = Operation()
         val detailOperation = Operation()
         val openApi = OpenAPI().path(
-            "/v1/policies",
+            "/v1/welfare-policies",
             PathItem().get(listOperation),
         ).path(
-            "/v1/policies/{id}",
+            "/v1/welfare-policies/{id}",
             PathItem().get(detailOperation),
         )
 

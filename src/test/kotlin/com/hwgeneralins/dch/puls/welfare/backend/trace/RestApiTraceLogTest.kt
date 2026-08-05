@@ -24,7 +24,7 @@ class RestApiTraceLogTest {
 
     @Test
     fun `request trace id is used for request and response logs then cleared`(output: CapturedOutput) {
-        val request = MockHttpServletRequest("GET", "/api/wsbd/v1/policies").apply {
+        val request = MockHttpServletRequest("GET", "/api/wsbd/v1/welfare-policies").apply {
             addHeader("X-TRACE-ID", "client-trace-123")
             queryString = "sido=%EC%84%9C%EC%9A%B8%ED%8A%B9%EB%B3%84%EC%8B%9C&sigungu=%EB%A7%88%ED%8F%AC%EA%B5%AC&limit=10"
             addParameter("sido", "서울특별시")
@@ -43,7 +43,7 @@ class RestApiTraceLogTest {
         RestApiTraceLog.requestLog(joinPoint, null)
         RestApiTraceLog.responseLog(joinPoint, null, emptyMap<String, Any>())
 
-        val decodedUri = "/api/wsbd/v1/policies?sido=서울특별시&sigungu=마포구&limit=10"
+        val decodedUri = "/api/wsbd/v1/welfare-policies?sido=서울특별시&sigungu=마포구&limit=10"
         assertThat(output.out).contains("REQ [client-trace-123] GET $decodedUri")
         assertThat(output.out).contains("RES [client-trace-123] GET $decodedUri")
         assertThat(output.out).doesNotContain("%EC%84%9C")
@@ -52,7 +52,7 @@ class RestApiTraceLogTest {
 
     @Test
     fun `multiple parameter values are preserved and control characters are sanitized`(output: CapturedOutput) {
-        val request = MockHttpServletRequest("GET", "/api/wsbd/v1/policies").apply {
+        val request = MockHttpServletRequest("GET", "/api/wsbd/v1/welfare-policies").apply {
             addParameter("region", "서울특별시", "부산광역시")
             addParameter("keyword", "정책\r\n위조로그")
         }
@@ -67,8 +67,8 @@ class RestApiTraceLogTest {
         RestApiTraceLog.requestLog(joinPoint, null)
         RestApiTraceLog.responseLog(joinPoint, null, emptyMap<String, Any>())
 
-        assertThat(output.out).contains("REQ [] GET /api/wsbd/v1/policies")
-        assertThat(output.out).contains("RES [] GET /api/wsbd/v1/policies")
+        assertThat(output.out).contains("REQ [] GET /api/wsbd/v1/welfare-policies")
+        assertThat(output.out).contains("RES [] GET /api/wsbd/v1/welfare-policies")
         assertThat(output.out).contains("region=서울특별시&region=부산광역시&keyword=정책  위조로그")
         assertThat(output.out).doesNotContain("정책\r\n위조로그")
     }

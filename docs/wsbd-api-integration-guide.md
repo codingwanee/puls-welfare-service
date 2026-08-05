@@ -3,8 +3,8 @@
 | Method | 경로 | 설명 |
 |---|---|---|
 | `GET` | `/api/wsbd/v1/regions` | 전체 시도·시군구 목록 조회 |
-| `GET` | `/api/wsbd/v1/policies` | 게시 정책 목록 cursor 조회 |
-| `GET` | `/api/wsbd/v1/policies/{id}` | 게시 정책 상세 조회 |
+| `GET` | `/api/wsbd/v1/welfare-policies` | 게시 정책 목록 cursor 조회 |
+| `GET` | `/api/wsbd/v1/welfare-policies/{id}` | 게시 정책 상세 조회 |
 
 ### 공통 요청 헤더
 
@@ -66,7 +66,7 @@ curl '{WSBD_ORIGIN}/api/wsbd/v1/regions' \
 ### 요청
 
 ```http
-GET /api/wsbd/v1/policies?sido={시도명}&sigungu={시군구명}&cursor={cursor}&limit={건수}
+GET /api/wsbd/v1/welfare-policies?sido={시도명}&sigungu={시군구명}&cursor={cursor}&limit={건수}
 ```
 
 | 파라미터 | 타입 | 필수 | 기본값 | 설명 |
@@ -95,7 +95,7 @@ GET /api/wsbd/v1/policies?sido={시도명}&sigungu={시군구명}&cursor={cursor
 ### 첫 페이지 요청 예시
 
 ```bash
-curl --get '{WSBD_ORIGIN}/api/wsbd/v1/policies' \
+curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies' \
   --data-urlencode 'sido=서울특별시' \
   --data-urlencode 'limit=20' \
   -H 'Accept: application/json' \
@@ -147,7 +147,7 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/policies' \
 ### 다음 페이지 요청 예시
 
 ```bash
-curl --get '{WSBD_ORIGIN}/api/wsbd/v1/policies' \
+curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies' \
   --data-urlencode 'sido=서울특별시' \
   --data-urlencode 'limit=20' \
   --data-urlencode 'cursor=WyJ2MSIsMTc4NTgwMTYwMCwwLDAsMjA3NTcsMSwxNzg1NzE1MjAwLDAsOTRd' \
@@ -161,11 +161,11 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/policies' \
 ### 요청
 
 ```http
-GET /api/wsbd/v1/policies/{id}
+GET /api/wsbd/v1/welfare-policies/{id}
 ```
 
 ```bash
-curl '{WSBD_ORIGIN}/api/wsbd/v1/policies/94' \
+curl '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/94' \
   -H 'Accept: application/json' \
   -H 'X-TRACE-ID: 9f53cd97-5e79-47da-8f65-5d95a4733dc8'
 ```
@@ -231,7 +231,7 @@ wsbd 오류는 admin-backend의 공통 오류 응답과 동일한 형식으로 �
   "code": "INVALID_REGION",
   "message": "유효하지 않은 지역입니다.",
   "detail": null,
-  "path": "/api/wsbd/v1/policies",
+  "path": "/api/wsbd/v1/welfare-policies",
   "errors": []
 }
 ```
@@ -246,7 +246,7 @@ wsbd 오류는 admin-backend의 공통 오류 응답과 동일한 형식으로 �
 ### 오류 예시: 잘못된 지역
 
 ```http
-GET /api/wsbd/v1/policies?sido=서울특별시&sigungu=없는구
+GET /api/wsbd/v1/welfare-policies?sido=서울특별시&sigungu=없는구
 ```
 
 ```json
@@ -256,7 +256,7 @@ GET /api/wsbd/v1/policies?sido=서울특별시&sigungu=없는구
   "code": "INVALID_REGION",
   "message": "유효하지 않은 지역입니다.",
   "detail": null,
-  "path": "/api/wsbd/v1/policies",
+  "path": "/api/wsbd/v1/welfare-policies",
   "errors": []
 }
 ```
@@ -270,7 +270,7 @@ GET /api/wsbd/v1/policies?sido=서울특별시&sigungu=없는구
   "code": "POLICY_NOT_AVAILABLE",
   "message": "현재 이용할 수 없는 정책입니다.",
   "detail": null,
-  "path": "/api/wsbd/v1/policies/94",
+  "path": "/api/wsbd/v1/welfare-policies/94",
   "errors": []
 }
 ```

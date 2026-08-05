@@ -48,9 +48,9 @@ class PolicyControllerTest {
     fun `home endpoint is removed and regular list supports home page size`() {
         repository.detail = policyRecord()
 
-        mvc.get("/v1/policies/home")
+        mvc.get("/v1/welfare-policies/home")
             .andExpect { status { isNotFound() } }
-        mvc.get("/v1/policies") { param("limit", "10") }
+        mvc.get("/v1/welfare-policies") { param("limit", "10") }
             .andExpect {
                 status { isOk() }
                 jsonPath("$.items.length()") { value(1) }
@@ -65,7 +65,7 @@ class PolicyControllerTest {
             onlineApplicationUrl = null,
         )
 
-        mvc.get("/v1/policies/1")
+        mvc.get("/v1/welfare-policies/1")
             .andExpect {
                 status { isOk() }
                 jsonPath("$.id") { value(1) }
@@ -86,14 +86,14 @@ class PolicyControllerTest {
     @Test
     fun `true missing row is 404 with stable code`() {
         repository.detail = null
-        mvc.get("/v1/policies/999")
+        mvc.get("/v1/welfare-policies/999")
             .andExpect {
                 status { isNotFound() }
                 jsonPath("$.status") { value(404) }
                 jsonPath("$.code") { value("POLICY_NOT_FOUND") }
                 jsonPath("$.message") { value("정책을 찾을 수 없습니다.") }
                 jsonPath("$.detail") { value(null) }
-                jsonPath("$.path") { value("/v1/policies/999") }
+                jsonPath("$.path") { value("/v1/welfare-policies/999") }
                 jsonPath("$.errors.length()") { value(0) }
                 jsonPath("$.businessCode") { doesNotExist() }
             }
@@ -101,7 +101,7 @@ class PolicyControllerTest {
 
     @Test
     fun `invalid parameter uses admin compatible error envelope`() {
-        mvc.get("/v1/policies") { param("limit", "invalid") }
+        mvc.get("/v1/welfare-policies") { param("limit", "invalid") }
             .andExpect {
                 status { isBadRequest() }
                 jsonPath("$.timestamp") { exists() }
@@ -109,7 +109,7 @@ class PolicyControllerTest {
                 jsonPath("$.code") { value("INVALID_REQUEST") }
                 jsonPath("$.message") { value("요청값을 확인해 주세요.") }
                 jsonPath("$.detail") { value("limit 값 'invalid'의 형식이 올바르지 않습니다.") }
-                jsonPath("$.path") { value("/v1/policies") }
+                jsonPath("$.path") { value("/v1/welfare-policies") }
                 jsonPath("$.errors.length()") { value(0) }
             }
     }
@@ -117,7 +117,7 @@ class PolicyControllerTest {
     @Test
     fun `existing invisible row is generic 410 without leaking internal status`() {
         repository.detail = policyRecord(status = "REVIEW")
-        mvc.get("/v1/policies/1")
+        mvc.get("/v1/welfare-policies/1")
             .andExpect {
                 status { isGone() }
                 jsonPath("$.code") { value("POLICY_NOT_AVAILABLE") }
@@ -136,7 +136,7 @@ class PolicyControllerTest {
 
         invisible.forEach { policy ->
             repository.detail = policy
-            mvc.get("/v1/policies/1")
+            mvc.get("/v1/welfare-policies/1")
                 .andExpect {
                     status { isGone() }
                     jsonPath("$.code") { value("POLICY_NOT_AVAILABLE") }
