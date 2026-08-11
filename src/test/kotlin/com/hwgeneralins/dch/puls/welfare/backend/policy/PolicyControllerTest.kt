@@ -55,6 +55,8 @@ class PolicyControllerTest {
                 status { isOk() }
                 jsonPath("$.items.length()") { value(1) }
                 jsonPath("$.items[0].id") { value(1) }
+                jsonPath("$.items[0].sido") { value("서울특별시") }
+                jsonPath("$.items[0].sigungu") { value("마포구") }
             }
     }
 

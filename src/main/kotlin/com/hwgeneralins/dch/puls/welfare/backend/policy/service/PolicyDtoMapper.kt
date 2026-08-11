@@ -12,6 +12,8 @@ class PolicyDtoMapper {
         serviceName = policy.serviceName,
         servicePurposeSummary = policy.servicePurposeSummary.clean(),
         competentAgency = policy.competentAgency.clean(),
+        sido = policy.sido.clean(),
+        sigungu = policy.sigungu.clean(),
     )
 
     fun toDetail(policy: PolicyRecord): PolicyDetailDto = PolicyDetailDto(

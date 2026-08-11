@@ -28,6 +28,7 @@ class JdbcPolicyReadRepositoryTest {
         jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET EXPO_STR_DTHMS = TIMESTAMP '2026-08-01 00:00:00' WHERE ID = 6")
         insert(7, "서울특별시", "마포구", "PUBLISHED")
         jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET EXPO_ND_DTHMS = TIMESTAMP '2026-07-01 00:00:00' WHERE ID = 7")
+        insert(8, "부산광역시", "해운대구", "PUBLISHED")
     }
 
     @Test
@@ -52,6 +53,18 @@ class JdbcPolicyReadRepositoryTest {
                 after = null, limit = 100, internalFirst = true,
             ).map { it.id },
         ).containsExactlyInAnyOrder(1, 2, 3, 4)
+    }
+
+    @Test
+    fun `empty region includes every visible policy`() {
+        val now = LocalDateTime.of(2026, 7, 30, 12, 0)
+
+        assertThat(
+            repository.findVisiblePage(
+                RegionRequest(null, null), now, now,
+                after = null, limit = 100, internalFirst = true,
+            ).map { it.id },
+        ).containsExactlyInAnyOrder(1, 2, 3, 4, 8)
     }
 
     @Test
