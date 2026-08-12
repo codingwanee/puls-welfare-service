@@ -61,7 +61,13 @@ DDL의 단일 기준은 어드민 레포의 `docs/db/migration/V20260730_01__cre
 
 `POLICY_CACHE_ENABLED=false`이면 Hazelcast, epoch poller와 epoch schema probe가 모두 비활성화되어 epoch 테이블 없이 DB 직접 조회 모드로 기동할 수 있다. 정책 read model 테이블 검증은 캐시 설정과 관계없이 항상 수행한다.
 
-관측 metric: `policy.cache.requests{map,result=hit|miss}`, `policy.cache.fallback`, `policy.cache.hazelcast.member.count`, `policy.cache.generation`, `policy.cache.generation.transitions`, `policy.cache.invalidation.lag.millis`, `policy.cache.epoch.poll.failures`, `policy.cache.epoch.row.missing`.
+관측 metric은 `welfare.serving.*` namespace를 정식 계약으로 사용한다. 정책 목록/상세와 repository 지연,
+목록 반환 건수, cache hit/miss·get/put·fallback, miss 병합과 inflight, cache state/generation,
+epoch poll·전파 지연 및 Hazelcast member 수를 Prometheus로 노출한다. 모든 시계열에는 `application=wsbd`가 포함된다.
+
+기존 `policy.cache.requests`, `policy.cache.fallback`, `policy.cache.hazelcast.member.count`,
+`policy.cache.generation`, `policy.cache.generation.transitions`, `policy.cache.invalidation.lag.millis`,
+`policy.cache.epoch.poll.failures`, `policy.cache.epoch.row.missing`는 대시보드 전환을 위해 한 호환 버전 동안만 병행하며 deprecated 상태다.
 
 ## 검증
 

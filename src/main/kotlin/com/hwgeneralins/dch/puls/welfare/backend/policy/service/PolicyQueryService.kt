@@ -6,6 +6,12 @@ import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheGeneration
 import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheMaps
 import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyCacheProperties
 import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyProperties
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.DetailSource
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyDetailOutcome
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyListOutcome
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyListScope
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyPage
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.BusinessErrorCode
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.PolicyApiException
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.CacheEnvelope
@@ -34,52 +40,89 @@ class PolicyQueryService(
     private val policyProperties: PolicyProperties,
     private val regionCatalog: RegionCatalogService,
     private val clock: Clock,
+    private val metrics: ServingMonitoringMetrics,
 ) {
     fun list(sido: String?, sigungu: String?, cursor: String?, limit: Int): CursorPageDto<PolicyListItemDto> {
-        if (limit !in 1..MAX_PAGE_SIZE) {
-            throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_CURSOR, "페이지 크기는 1~$MAX_PAGE_SIZE 범위여야 합니다.")
+        val sample = metrics.start()
+        val scope = when {
+            !sigungu.isNullOrBlank() -> PolicyListScope.SIGUNGU
+            !sido.isNullOrBlank() -> PolicyListScope.SIDO
+            else -> PolicyListScope.ALL
         }
-        val region = region(sido, sigungu)
-        val decoded = cursor?.let(cursorCodec::decode)
-        if (decoded != null && decoded.sortVersion != sort.version) {
-            throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_CURSOR, "현재 정렬 정책과 호환되지 않는 페이지 커서입니다.")
+        val pageType = if (cursor == null) PolicyPage.FIRST else PolicyPage.NEXT
+        try {
+            if (limit !in 1..MAX_PAGE_SIZE) {
+                throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_CURSOR, "페이지 크기는 1~$MAX_PAGE_SIZE 범위여야 합니다.")
+            }
+            val region = region(sido, sigungu)
+            val decoded = cursor?.let(cursorCodec::decode)
+            if (decoded != null && decoded.sortVersion != sort.version) {
+                throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_CURSOR, "현재 정렬 정책과 호환되지 않는 페이지 커서입니다.")
+            }
+            val asOf = decoded?.asOf ?: LocalDateTime.now(clock)
+            val now = LocalDateTime.now(clock)
+            val after = decoded?.sortKey()
+            val ordered = repository.findVisiblePage(
+                region = region,
+                now = now,
+                asOf = asOf,
+                after = after,
+                limit = limit + 1,
+                internalFirst = policyProperties.sort.internalFirst,
+            ).asSequence()
+                .filter { it.isVisibleAt(now) }
+                .sortedWith(sort.comparator)
+                .filter { after == null || sort.compare(sort.key(it), after) > 0 }
+                .take(limit + 1)
+                .toList()
+            val page = ordered.take(limit)
+            val hasNext = ordered.size > limit
+            val nextCursor = if (hasNext && page.isNotEmpty()) {
+                val key = sort.key(page.last())
+                cursorCodec.encode(PolicyCursor(sort.version, asOf, key.sourceRank, key.deadline, key.deadlineGroup, key.inputAt, key.id))
+            } else null
+            return CursorPageDto(page.map(mapper::toListItem), nextCursor, hasNext).also {
+                metrics.recordPolicyList(sample, scope, pageType, PolicyListOutcome.SUCCESS, it.items.size)
+            }
+        } catch (exception: PolicyApiException) {
+            metrics.recordPolicyList(sample, scope, pageType, PolicyListOutcome.INVALID_REQUEST)
+            throw exception
+        } catch (cause: Throwable) {
+            metrics.recordPolicyList(sample, scope, pageType, PolicyListOutcome.FAILURE)
+            throw cause
         }
-        val asOf = decoded?.asOf ?: LocalDateTime.now(clock)
-        val now = LocalDateTime.now(clock)
-        val after = decoded?.sortKey()
-        val ordered = repository.findVisiblePage(
-            region = region,
-            now = now,
-            asOf = asOf,
-            after = after,
-            limit = limit + 1,
-            internalFirst = policyProperties.sort.internalFirst,
-        ).asSequence()
-            .filter { it.isVisibleAt(now) }
-            .sortedWith(sort.comparator)
-            .filter { after == null || sort.compare(sort.key(it), after) > 0 }
-            .take(limit + 1)
-            .toList()
-        val page = ordered.take(limit)
-        val hasNext = ordered.size > limit
-        val nextCursor = if (hasNext && page.isNotEmpty()) {
-            val key = sort.key(page.last())
-            cursorCodec.encode(PolicyCursor(sort.version, asOf, key.sourceRank, key.deadline, key.deadlineGroup, key.inputAt, key.id))
-        } else null
-        return CursorPageDto(page.map(mapper::toListItem), nextCursor, hasNext)
     }
 
     fun detail(id: Long): PolicyDetailDto {
-        val generation = cacheGeneration.capture()
-        val key = generation?.let { "${PolicyCacheMaps.KEY_PREFIX}e$it:policy:$id" }
-        if (key != null) {
-            return cacheLoadCoordinator.getOrLoad(
-                key = key,
-                cached = { cache.getDetail(key)?.value },
-                loader = { loadDetail(id, key) },
-            )
+        val sample = metrics.start()
+        var source = DetailSource.BYPASS
+        try {
+            val generation = cacheGeneration.capture()
+            val key = generation?.let { "${PolicyCacheMaps.KEY_PREFIX}e$it:policy:$id" }
+            val result = if (key != null) {
+                cacheLoadCoordinator.getOrLoad(
+                    key = key,
+                    cached = { cache.getDetail(key)?.value },
+                    loader = { loadDetail(id, key) },
+                    source = { source = it },
+                )
+            } else {
+                loadDetail(id, null)
+            }
+            metrics.recordPolicyDetail(sample, source, PolicyDetailOutcome.SUCCESS)
+            return result
+        } catch (exception: PolicyApiException) {
+            val outcome = when (exception.businessCode) {
+                BusinessErrorCode.POLICY_NOT_FOUND -> PolicyDetailOutcome.NOT_FOUND
+                BusinessErrorCode.POLICY_NOT_AVAILABLE -> PolicyDetailOutcome.NOT_AVAILABLE
+                else -> PolicyDetailOutcome.FAILURE
+            }
+            metrics.recordPolicyDetail(sample, source, outcome)
+            throw exception
+        } catch (cause: Throwable) {
+            metrics.recordPolicyDetail(sample, source, PolicyDetailOutcome.FAILURE)
+            throw cause
         }
-        return loadDetail(id, null)
     }
 
     private fun loadDetail(id: Long, cacheKey: String?): PolicyDetailDto {

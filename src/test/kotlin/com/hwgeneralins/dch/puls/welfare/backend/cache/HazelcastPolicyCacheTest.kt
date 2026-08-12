@@ -15,6 +15,7 @@ import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortStrate
 import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortKey
 import com.hwgeneralins.dch.puls.welfare.backend.policyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.await
@@ -41,8 +42,8 @@ class HazelcastPolicyCacheTest {
             }
             val metrics1 = SimpleMeterRegistry()
             val metrics2 = SimpleMeterRegistry()
-            val cache1 = HazelcastPolicyCache(node1, metrics1, Clock.systemUTC())
-            val cache2 = HazelcastPolicyCache(node2, metrics2, Clock.systemUTC())
+            val cache1 = HazelcastPolicyCache(node1, ServingMonitoringMetrics(metrics1, Clock.systemUTC()), Clock.systemUTC())
+            val cache2 = HazelcastPolicyCache(node2, ServingMonitoringMetrics(metrics2, Clock.systemUTC()), Clock.systemUTC())
             val detail = PolicyDtoMapper().toDetail(policyRecord())
             cache1.putDetail("v4:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
             await().untilAsserted { assertThat(cache2.getDetail("v4:policy:1")?.value).isEqualTo(detail) }
@@ -62,7 +63,8 @@ class HazelcastPolicyCacheTest {
         )
         val node = HazelcastConfig().hazelcastInstance(properties)
         val metrics = SimpleMeterRegistry()
-        val cache = HazelcastPolicyCache(node, metrics, Clock.systemUTC())
+        val monitoring = ServingMonitoringMetrics(metrics, Clock.systemUTC())
+        val cache = HazelcastPolicyCache(node, monitoring, Clock.systemUTC())
         node.shutdown()
         assertThat(cache.getDetail("v4:policy:1")).isNull()
         assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V4).count()).isEqualTo(1.0)
@@ -83,8 +85,8 @@ class HazelcastPolicyCacheTest {
         }
         val service = PolicyQueryService(
             repository, PolicyDtoMapper(), PolicySortStrategy(policyProperties), CursorCodec(objectMapper),
-            cache, CacheLoadCoordinator(), PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(1) }, properties, policyProperties,
-            RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json")), Clock.systemUTC(),
+            cache, CacheLoadCoordinator(monitoring), PolicyCacheGeneration(monitoring, properties).apply { activate(1) }, properties, policyProperties,
+            RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json")), Clock.systemUTC(), monitoring,
         )
         assertThat(service.detail(1).serviceName).isEqualTo("정책 1")
     }

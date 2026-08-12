@@ -17,6 +17,7 @@ import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortStrate
 import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortKey
 import com.hwgeneralins.dch.puls.welfare.backend.policyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -37,6 +38,7 @@ class PolicyQueryServiceTest {
     private val zone = ZoneId.of("Asia/Seoul")
     private val clock = Clock.fixed(now, zone)
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
+    private val metrics = ServingMonitoringMetrics(SimpleMeterRegistry(), clock)
     private val policyProperties = PolicyProperties()
     private val catalog = RegionCatalogService(
         objectMapper,
@@ -78,7 +80,8 @@ class PolicyQueryServiceTest {
 
     @Test
     fun `load started on old generation cannot repopulate the active generation after switch`() {
-        val generation = PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(41) }
+        val properties = PolicyCacheProperties()
+        val generation = PolicyCacheGeneration(metrics, properties).apply { activate(41) }
         val cache = GenerationRaceCache()
         val repository = BlockingDetailRepository(
             current = policyRecord(id = 1).copy(serviceName = "old policy"),
@@ -86,7 +89,7 @@ class PolicyQueryServiceTest {
         val service = service(
             repository = repository,
             cache = cache,
-            cacheProperties = PolicyCacheProperties(),
+            cacheProperties = properties,
             cacheGeneration = generation,
         )
         val executor = Executors.newSingleThreadExecutor()
@@ -140,19 +143,20 @@ class PolicyQueryServiceTest {
         repository: PolicyReadRepository,
         cache: PolicyCache,
         cacheProperties: PolicyCacheProperties,
-        cacheGeneration: PolicyCacheGeneration = PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(1) },
+        cacheGeneration: PolicyCacheGeneration = PolicyCacheGeneration(metrics, cacheProperties).apply { activate(1) },
     ) = PolicyQueryService(
         repository = repository,
         mapper = PolicyDtoMapper(),
         sort = PolicySortStrategy(policyProperties),
         cursorCodec = CursorCodec(objectMapper),
         cache = cache,
-        cacheLoadCoordinator = com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(),
+        cacheLoadCoordinator = com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(metrics),
         cacheGeneration = cacheGeneration,
         cacheProperties = cacheProperties,
         policyProperties = policyProperties,
         regionCatalog = catalog,
         clock = clock,
+        metrics = metrics,
     )
 }
 

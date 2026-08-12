@@ -19,6 +19,7 @@ import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortStrate
 import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortKey
 import com.hwgeneralins.dch.puls.welfare.backend.policyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource
@@ -34,12 +35,14 @@ class PolicyControllerTest {
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
     private val properties = PolicyProperties()
     private val catalog = RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json"))
+    private val cacheProperties = PolicyCacheProperties(enabled = false)
+    private val clock = Clock.fixed(Instant.parse("2026-07-30T03:00:00Z"), ZoneId.of("Asia/Seoul"))
+    private val metrics = ServingMonitoringMetrics(SimpleMeterRegistry(), clock)
     private val service = PolicyQueryService(
         repository, PolicyDtoMapper(), PolicySortStrategy(properties), CursorCodec(objectMapper),
-        EmptyCache(), com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(),
-        PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(1) },
-        PolicyCacheProperties(enabled = false), properties, catalog,
-        Clock.fixed(Instant.parse("2026-07-30T03:00:00Z"), ZoneId.of("Asia/Seoul")),
+        EmptyCache(), com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(metrics),
+        PolicyCacheGeneration(metrics, cacheProperties).apply { activate(1) },
+        cacheProperties, properties, catalog, clock, metrics,
     )
     private val mvc = MockMvcBuilders.standaloneSetup(PolicyController(service, catalog))
         .setControllerAdvice(GlobalExceptionHandler()).build()

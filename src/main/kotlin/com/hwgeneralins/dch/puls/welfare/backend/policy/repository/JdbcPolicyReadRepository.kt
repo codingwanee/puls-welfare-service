@@ -3,6 +3,8 @@ package com.hwgeneralins.dch.puls.welfare.backend.policy.repository
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RegionRequest
 import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortKey
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.RepositoryOperation
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import org.springframework.jdbc.core.RowMapper
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
@@ -14,12 +16,17 @@ import java.time.LocalDateTime
 
 @Repository
 @Transactional(readOnly = true)
-class JdbcPolicyReadRepository(private val jdbc: NamedParameterJdbcTemplate) : PolicyReadRepository {
-    override fun findById(id: Long): PolicyRecord? = jdbc.query(
-        "$SELECT_COLUMNS WHERE ID = :id",
-        mapOf("id" to id),
-        mapper,
-    ).firstOrNull()
+class JdbcPolicyReadRepository(
+    private val jdbc: NamedParameterJdbcTemplate,
+    private val metrics: ServingMonitoringMetrics,
+) : PolicyReadRepository {
+    override fun findById(id: Long): PolicyRecord? = metrics.repository(RepositoryOperation.DETAIL) {
+        jdbc.query(
+            "$SELECT_COLUMNS WHERE ID = :id",
+            mapOf("id" to id),
+            mapper,
+        ).firstOrNull()
+    }
 
     override fun findVisiblePage(
         region: RegionRequest,
@@ -28,7 +35,7 @@ class JdbcPolicyReadRepository(private val jdbc: NamedParameterJdbcTemplate) : P
         after: PolicySortKey?,
         limit: Int,
         internalFirst: Boolean,
-    ): List<PolicyRecord> {
+    ): List<PolicyRecord> = metrics.repository(RepositoryOperation.LIST) {
         val sourceRank = if (internalFirst) {
             "CASE WHEN POL_DAT_TYP = 'INTERNAL' THEN 0 ELSE 1 END"
         } else {
@@ -69,7 +76,7 @@ class JdbcPolicyReadRepository(private val jdbc: NamedParameterJdbcTemplate) : P
                 .addValue("afterId", it.id)
         }
 
-        return jdbc.query(
+        jdbc.query(
             """
             $SELECT_COLUMNS
              WHERE $VISIBLE

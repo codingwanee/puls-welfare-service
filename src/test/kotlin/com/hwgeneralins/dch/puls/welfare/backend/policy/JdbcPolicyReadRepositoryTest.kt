@@ -3,6 +3,8 @@ package com.hwgeneralins.dch.puls.welfare.backend.policy
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RegionRequest
 import com.hwgeneralins.dch.puls.welfare.backend.policy.repository.JdbcPolicyReadRepository
 import com.hwgeneralins.dch.puls.welfare.backend.policy.service.PolicySortKey
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -10,10 +12,14 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.datasource.DriverManagerDataSource
 import java.time.LocalDateTime
+import java.time.Clock
 
 class JdbcPolicyReadRepositoryTest {
     private val jdbc = JdbcTemplate(DriverManagerDataSource("jdbc:h2:mem:region-test;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", ""))
-    private val repository = JdbcPolicyReadRepository(NamedParameterJdbcTemplate(jdbc))
+    private val repository = JdbcPolicyReadRepository(
+        NamedParameterJdbcTemplate(jdbc),
+        ServingMonitoringMetrics(SimpleMeterRegistry(), Clock.systemUTC()),
+    )
 
     @BeforeEach
     fun setUp() {
