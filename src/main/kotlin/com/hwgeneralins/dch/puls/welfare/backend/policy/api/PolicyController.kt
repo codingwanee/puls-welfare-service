@@ -27,13 +27,12 @@ class PolicyController(
     @GetMapping("/welfare-policies")
     fun list(
         @Parameter(
-            description = "시도명. 생략하면 서버 기본 시도인 서울특별시를 사용합니다.",
+            description = "시도명. 시도와 시군구를 모두 생략하면 전체 정책을 조회합니다.",
             example = "서울특별시",
-            schema = Schema(defaultValue = "서울특별시"),
         )
         @RequestParam(required = false) sido: String?,
         @Parameter(
-            description = "시군구명. 생략하면 선택한 시도 전체 정책을 조회합니다.",
+            description = "시군구명. 시도만 입력하고 생략하면 선택한 시도 전체 정책을 조회합니다.",
             example = "마포구",
         )
         @RequestParam(required = false) sigungu: String?,

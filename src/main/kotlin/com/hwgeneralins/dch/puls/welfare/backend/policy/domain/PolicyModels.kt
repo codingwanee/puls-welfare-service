@@ -7,7 +7,7 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
-data class RegionRequest(val sido: String, val sigungu: String?)
+data class RegionRequest(val sido: String?, val sigungu: String?)
 
 data class PolicyRecord(
     val id: Long,
@@ -59,6 +59,10 @@ data class PolicyListItemDto(
     val servicePurposeSummary: String?,
     @field:Schema(description = "소관기관명", example = "서울특별시 동작구")
     val competentAgency: String?,
+    @field:Schema(description = "시도명", example = "서울특별시")
+    val sido: String?,
+    @field:Schema(description = "시군구명", example = "동작구")
+    val sigungu: String?,
 ) : Serializable
 
 @JsonInclude(JsonInclude.Include.ALWAYS)

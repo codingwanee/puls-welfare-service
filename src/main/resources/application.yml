@@ -29,7 +29,6 @@ management:
 
 app:
   policy:
-    default-sido: ${DEFAULT_SIDO:서울특별시}
     sort:
       version: ${POLICY_SORT_VERSION:v1}
       internal-first: ${POLICY_INTERNAL_FIRST:true}

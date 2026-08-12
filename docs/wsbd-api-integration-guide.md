@@ -71,12 +71,14 @@ GET /api/wsbd/v1/welfare-policies?sido={시도명}&sigungu={시군구명}&cursor
 
 | 파라미터 | 타입 | 필수 | 기본값 | 설명 |
 |---|---|---:|---|---|
-| `sido` | string | N | `서울특별시` | 시도명 |
-| `sigungu` | string | N | 없음 | 시군구명. 생략하면 해당 시도 전체 조회 |
+| `sido` | string | N | 없음 | 시도명. 시도·시군구를 모두 생략하면 전체 조회 |
+| `sigungu` | string | N | 없음 | 시군구명. 시도만 입력하고 생략하면 해당 시도 전체 조회 |
 | `cursor` | string | N | 없음 | 이전 응답의 `nextCursor`. 첫 페이지는 생략 |
 | `limit` | integer | N | `20` | 페이지당 건수, `1~100` |
 
 ### 지역 조회 범위
+
+`sido`와 `sigungu`를 모두 생략하면 지역 필터 없이 전체 정책이 포함된다.
 
 `sido=서울특별시`이고 `sigungu`를 생략하면 다음 정책이 포함된다.
 
@@ -111,13 +113,17 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies' \
       "id": 94,
       "serviceName": "부모성장을 위한 심리지원서비스",
       "servicePurposeSummary": "임신부 또는 만 18세 이하 자녀를 둔 부모를 대상으로 심리지원서비스 제공",
-      "competentAgency": "서울특별시 동작구"
+      "competentAgency": "서울특별시 동작구",
+      "sido": "서울특별시",
+      "sigungu": "동작구"
     },
     {
       "id": 101,
       "serviceName": "임산부 교통비 지원",
       "servicePurposeSummary": "임산부의 이동 편의를 높이기 위해 교통비를 지원",
-      "competentAgency": "서울특별시"
+      "competentAgency": "서울특별시",
+      "sido": "서울특별시",
+      "sigungu": null
     }
   ],
   "nextCursor": "WyJ2MSIsMTc4NTgwMTYwMCwwLDAsMjA3NTcsMSwxNzg1NzE1MjAwLDAsOTRd",
@@ -133,6 +139,8 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies' \
 | `serviceName` | string | N | 서비스명 |
 | `servicePurposeSummary` | string | Y | 서비스 목적 요약 |
 | `competentAgency` | string | Y | 소관기관명 |
+| `sido` | string | Y | 정책 적용 시도명 |
+| `sigungu` | string | Y | 정책 적용 시군구명 |
 
 ### Cursor 처리 규칙
 

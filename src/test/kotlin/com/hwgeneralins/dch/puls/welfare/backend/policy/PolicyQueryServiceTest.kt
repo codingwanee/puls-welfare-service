@@ -65,6 +65,18 @@ class PolicyQueryServiceTest {
     }
 
     @Test
+    fun `blank region request is passed to repository without a default sido`() {
+        val repository = StubRepository(records = listOf(policyRecord()))
+        val service = service(repository, CapturingCache(), PolicyCacheProperties(enabled = false))
+
+        val result = service.list("  ", "", cursor = null, limit = 20)
+
+        assertThat(repository.requestedRegion).isEqualTo(RegionRequest(null, null))
+        assertThat(result.items.single().sido).isEqualTo("서울특별시")
+        assertThat(result.items.single().sigungu).isEqualTo("마포구")
+    }
+
+    @Test
     fun `load started on old generation cannot repopulate the active generation after switch`() {
         val generation = PolicyCacheGeneration(SimpleMeterRegistry()).apply { activate(41) }
         val cache = GenerationRaceCache()
@@ -213,6 +225,8 @@ private class BlockingCountingDetailRepository(
 private class StubRepository(
     private val records: List<PolicyRecord>,
 ) : PolicyReadRepository {
+    var requestedRegion: RegionRequest? = null
+
     override fun findById(id: Long): PolicyRecord? = records.firstOrNull { it.id == id }
 
     override fun findVisiblePage(
@@ -222,7 +236,10 @@ private class StubRepository(
         after: PolicySortKey?,
         limit: Int,
         internalFirst: Boolean,
-    ): List<PolicyRecord> = records.take(limit)
+    ): List<PolicyRecord> {
+        requestedRegion = region
+        return records.take(limit)
+    }
 
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
 }

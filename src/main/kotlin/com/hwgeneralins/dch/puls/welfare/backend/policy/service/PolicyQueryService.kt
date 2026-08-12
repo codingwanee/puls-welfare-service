@@ -97,9 +97,14 @@ class PolicyQueryService(
     }
 
     private fun region(sido: String?, sigungu: String?): RegionRequest {
-        val normalizedSido = sido?.trim()?.takeIf { it.isNotEmpty() } ?: policyProperties.defaultSido
+        val normalizedSido = sido?.trim()?.takeIf { it.isNotEmpty() }
         val normalizedSigungu = sigungu?.trim()?.takeIf { it.isNotEmpty() }
-        if (!regionCatalog.contains(normalizedSido, normalizedSigungu)) {
+        val invalid = if (normalizedSido == null) {
+            normalizedSigungu != null
+        } else {
+            !regionCatalog.contains(normalizedSido, normalizedSigungu)
+        }
+        if (invalid) {
             throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_REGION, "유효하지 않은 지역입니다.")
         }
         return RegionRequest(normalizedSido, normalizedSigungu)

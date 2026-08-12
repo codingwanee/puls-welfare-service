@@ -37,6 +37,7 @@ class JdbcPolicyReadRepository(private val jdbc: NamedParameterJdbcTemplate) : P
         val deadlineGroup = "COALESCE(RQ_PERD_ORDR_GP_ORDR, :maxDeadlineGroup)"
         val deadlineDate = "COALESCE(RQ_PERD_ORDR_DT, :maxDeadlineDate)"
         val inputAt = "COALESCE(INP_DTHMS, :minInputAt)"
+        val regionCondition = if (region.sido == null) "" else "AND $REGION"
         val keyset = if (after == null) {
             ""
         } else {
@@ -72,7 +73,7 @@ class JdbcPolicyReadRepository(private val jdbc: NamedParameterJdbcTemplate) : P
             """
             $SELECT_COLUMNS
              WHERE $VISIBLE
-               AND $REGION
+               $regionCondition
                AND (INP_DTHMS IS NULL OR INP_DTHMS <= :asOf)
                $keyset
              ORDER BY $sourceRank ASC,
