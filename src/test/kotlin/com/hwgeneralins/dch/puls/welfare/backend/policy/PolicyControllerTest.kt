@@ -63,6 +63,7 @@ class PolicyControllerTest {
         repository.detail = policyRecord().copy(
             receivingAgencyName = null,
             onlineApplicationUrl = null,
+            siteUrl = null,
         )
 
         mvc.get("/v1/welfare-policies/1")
@@ -73,9 +74,9 @@ class PolicyControllerTest {
                 jsonPath("$.supportBenefitSummary") { value("30만원") }
                 jsonPath("$.receivingAgencyName") { value(null) }
                 jsonPath("$.onlineApplicationUrl") { value(null) }
+                jsonPath("$.siteUrl") { value(null) }
                 jsonPath("$.serviceId") { doesNotExist() }
                 jsonPath("$.dataType") { doesNotExist() }
-                jsonPath("$.siteUrl") { doesNotExist() }
                 jsonPath("$.landingUrl") { doesNotExist() }
                 jsonPath("$.shareUrl") { doesNotExist() }
                 jsonPath("$.tabs") { doesNotExist() }

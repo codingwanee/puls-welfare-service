@@ -29,6 +29,7 @@ class PolicyDtoMapper {
         receivingAgencyName = policy.receivingAgencyName.clean(), // 접수기관명
         contact = policy.contact.clean(), // 문의처
         onlineApplicationUrl = policy.onlineApplicationUrl.clean(), // 온라인신청사이트URL
+        siteUrl = policy.siteUrl.clean(), // 사이트URL
         updatedDate = policy.updatedDate, // 정책수정일시
         competentAgency = policy.competentAgency.clean(), // 소관기관
         administrativeRules = policy.administrativeRules.clean(), // 행정규칙

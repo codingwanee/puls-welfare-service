@@ -90,7 +90,7 @@ class PolicyQueryServiceTest {
             assertThat(oldRequest.get(5, TimeUnit.SECONDS).serviceName).isEqualTo("old policy")
             // The late old put is unreachable because all new requests capture generation 42.
             assertThat(service.detail(1).serviceName).isEqualTo("new policy")
-            assertThat(cache.keys()).contains("v3:e41:policy:1", "v3:e42:policy:1")
+            assertThat(cache.keys()).contains("v4:e41:policy:1", "v4:e42:policy:1")
         } finally {
             executor.shutdownNow()
         }

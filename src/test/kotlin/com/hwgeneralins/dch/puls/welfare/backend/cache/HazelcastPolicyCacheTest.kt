@@ -44,11 +44,11 @@ class HazelcastPolicyCacheTest {
             val cache1 = HazelcastPolicyCache(node1, metrics1, Clock.systemUTC())
             val cache2 = HazelcastPolicyCache(node2, metrics2, Clock.systemUTC())
             val detail = PolicyDtoMapper().toDetail(policyRecord())
-            cache1.putDetail("v3:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
-            await().untilAsserted { assertThat(cache2.getDetail("v3:policy:1")?.value).isEqualTo(detail) }
-            assertThat(metrics2.counter("policy.cache.requests", "map", PolicyCacheMaps.DETAIL_V3, "result", "hit").count())
+            cache1.putDetail("v4:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
+            await().untilAsserted { assertThat(cache2.getDetail("v4:policy:1")?.value).isEqualTo(detail) }
+            assertThat(metrics2.counter("policy.cache.requests", "map", PolicyCacheMaps.DETAIL_V4, "result", "hit").count())
                 .isGreaterThanOrEqualTo(1.0)
-            assertThat(cache1.getDetail("v3:e42:policy:1")).isNull()
+            assertThat(cache1.getDetail("v4:e42:policy:1")).isNull()
         } finally {
             node2.shutdown()
             node1.shutdown()
@@ -64,8 +64,8 @@ class HazelcastPolicyCacheTest {
         val metrics = SimpleMeterRegistry()
         val cache = HazelcastPolicyCache(node, metrics, Clock.systemUTC())
         node.shutdown()
-        assertThat(cache.getDetail("v3:policy:1")).isNull()
-        assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V3).count()).isEqualTo(1.0)
+        assertThat(cache.getDetail("v4:policy:1")).isNull()
+        assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V4).count()).isEqualTo(1.0)
 
         val objectMapper = jacksonObjectMapper().findAndRegisterModules()
         val policyProperties = PolicyProperties()

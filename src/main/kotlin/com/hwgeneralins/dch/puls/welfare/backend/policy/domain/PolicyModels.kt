@@ -92,6 +92,8 @@ data class PolicyDetailDto(
     val contact: String?,
     @field:Schema(description = "온라인 신청 사이트 URL", example = "https://www.gov.kr/portal/rcvfvrSvc/main")
     val onlineApplicationUrl: String?,
+    @field:Schema(description = "정책 상세 사이트 URL", example = "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/135200000001")
+    val siteUrl: String?,
     @field:Schema(description = "정책 수정일", example = "2026-04-29", type = "string", format = "date")
     val updatedDate: LocalDate?,
     @field:Schema(description = "소관기관명", example = "서울특별시 동작구")

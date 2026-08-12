@@ -16,13 +16,14 @@ class PolicyDtoMapperTest {
         assertThat(detail.serviceName).isEqualTo("정책 42")
         assertThat(detail.supportBenefitSummary).isEqualTo("30만원")
         assertThat(detail.onlineApplicationUrl).isEqualTo("https://apply.example/42")
+        assertThat(detail.siteUrl).isEqualTo("https://site.example/42")
         assertThat(detail.competentAgency).isEqualTo("소관 기관")
         assertThat(mapper.toListItem(policyRecord()).competentAgency).isEqualTo("소관 기관")
         assertThat(ObjectMapper().findAndRegisterModules().writeValueAsString(detail))
             .contains("servicePurposeSummary", "receivingAgencyName", "administrativeRules")
             .doesNotContain(
                 "isRead", "category", "tabs", "title", "oneLineDescription", "supportBenefit\"",
-                "serviceId", "dataType", "siteUrl", "regionLabel", "landingUrl", "shareUrl",
+                "serviceId", "dataType", "regionLabel", "landingUrl", "shareUrl",
             )
     }
 
@@ -42,7 +43,8 @@ class PolicyDtoMapperTest {
                 "\"selectionCriteria\":null",
                 "\"receivingAgencyName\":null",
                 "\"onlineApplicationUrl\":null",
+                "\"siteUrl\":null",
             )
-            .doesNotContain("siteUrl", "landingUrl", "shareUrl")
+            .doesNotContain("landingUrl", "shareUrl")
     }
 }

@@ -188,6 +188,7 @@ curl '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/94' \
   "receivingAgencyName": "관할 동주민센터",
   "contact": "아동여성과/02-820-9259",
   "onlineApplicationUrl": "https://www.gov.kr/portal/rcvfvrSvc/main",
+  "siteUrl": "https://www.gov.kr/portal/rcvfvrSvc/dtlEx/135200000001",
   "updatedDate": "2026-04-29",
   "competentAgency": "서울특별시 동작구",
   "administrativeRules": "사회서비스 이용권 관련 지침",
@@ -214,6 +215,7 @@ curl '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/94' \
 | `receivingAgencyName` | string | Y | 접수기관명 |
 | `contact` | string | Y | 문의처 |
 | `onlineApplicationUrl` | string | Y | 온라인 신청 사이트 URL |
+| `siteUrl` | string | Y | 정책 상세 사이트 URL |
 | `updatedDate` | string(date) | Y | 정책 수정일, `YYYY-MM-DD` |
 | `competentAgency` | string | Y | 소관기관명 |
 | `administrativeRules` | string | Y | 관련 행정규칙 |
