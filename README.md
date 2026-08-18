@@ -31,11 +31,32 @@ query parameter는 servlet에서 UTF-8 디코딩된 값을 사용해 한글 그�
 
 ## 실행과 2-node cluster
 
+DB 비밀번호는 Jasypt `ENC(...)` 형식으로 암호화한 뒤 배포 환경의 마스킹된 변수로 주입한다.
+복호화 마스터 키는 서비스 전용 `KMS_PASSWORD`로 별도 주입하며 저장소, 배포 YAML, 로그에 남기지 않는다.
+암호화 규격은 `PBEWithHMACSHA512AndAES_256`, 100,000 iterations, random IV, Base64다.
+키 또는 암호문이 없거나 올바르지 않으면 애플리케이션은 기동하지 않는다.
+
 ```bash
-DB_URL='jdbc:mysql://db:3306/welfare' DB_USERNAME=puls_app_ro DB_PASSWORD=... \
+KMS_PASSWORD='<serving-master-key>' DB_PASSWORD='ENC(<encrypted-db-password>)' \
+DB_URL='jdbc:mysql://db:3306/welfare' DB_USERNAME=puls_app_ro \
 HAZELCAST_CLUSTER_NAME=welfare-prod HAZELCAST_MEMBERS=10.0.1.10:5701,10.0.1.11:5701 \
 HAZELCAST_PORT=5701 SERVER_PORT=8081 ./gradlew bootRun
 ```
+
+`KMS_PASSWORD`와 DB 비밀번호 원문은 서로 다른 값이어야 한다. admin 서비스와도 마스터 키를
+공유하지 않는다. 이미 저장소 이력에 포함된 기존 DB 자격증명은 배포 전에 교체해야 한다.
+
+새 비밀값의 `ENC(...)` 값은 저장소에 기록하지 않고 다음 로컬 명령으로 생성한다. zsh의
+숨김 입력을 사용하므로 키와 평문이 shell history나 명령행 인자에 남지 않는다.
+
+```bash
+read -s 'KMS_PASSWORD?Master key: '; export KMS_PASSWORD; echo
+read -s 'SECRET_TO_ENCRYPT?Secret to encrypt: '; export SECRET_TO_ENCRYPT; echo
+./gradlew encryptSecret --quiet --no-daemon
+unset KMS_PASSWORD SECRET_TO_ENCRYPT
+```
+
+출력된 한 줄 전체를 `DB_PASSWORD`의 마스킹된 배포 변수로 등록한다.
 
 홈 화면도 별도 API 없이 `GET /welfare-policies?limit=10`의 `items`를 사용한다.
 
