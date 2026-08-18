@@ -7,3 +7,5 @@ spring:
     hibernate.ddl-auto: none
 app:
   cache.enabled: false
+kms:
+  password: welfare-serving-test-key-not-a-secret

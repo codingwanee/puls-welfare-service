@@ -39,6 +39,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-log4j2")
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9")
     implementation("com.hazelcast:hazelcast:5.5.0")
+    implementation("com.github.ulisesbocchio:jasypt-spring-boot-starter:4.0.4")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("io.micrometer:micrometer-registry-prometheus")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
