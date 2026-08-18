@@ -22,6 +22,10 @@ val buildBranch = providers.gradleProperty("buildBranch").orElse("local")
 java { toolchain { languageVersion = JavaLanguageVersion.of(17) } }
 repositories { mavenCentral() }
 
+springBoot {
+    mainClass.set("com.hwgeneralins.dch.puls.welfare.backend.WelfareApplicationKt")
+}
+
 configurations.configureEach {
     exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
     exclude(group = "org.apache.logging.log4j", module = "log4j-to-slf4j")
@@ -67,4 +71,11 @@ tasks.named<BootJar>("bootJar") {
             "Build-Branch" to buildBranch.get(),
         )
     }
+}
+
+tasks.register<JavaExec>("encryptSecret") {
+    group = "security"
+    description = "Encrypts SECRET_TO_ENCRYPT with KMS_PASSWORD and prints an ENC(...) value."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("com.hwgeneralins.dch.puls.welfare.backend.config.SecretEncryptCliKt")
 }

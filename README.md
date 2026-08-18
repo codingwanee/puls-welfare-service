@@ -46,6 +46,18 @@ HAZELCAST_PORT=5701 SERVER_PORT=8081 ./gradlew bootRun
 `KMS_PASSWORD`와 DB 비밀번호 원문은 서로 다른 값이어야 한다. admin 서비스와도 마스터 키를
 공유하지 않는다. 이미 저장소 이력에 포함된 기존 DB 자격증명은 배포 전에 교체해야 한다.
 
+새 비밀값의 `ENC(...)` 값은 저장소에 기록하지 않고 다음 로컬 명령으로 생성한다. zsh의
+숨김 입력을 사용하므로 키와 평문이 shell history나 명령행 인자에 남지 않는다.
+
+```bash
+read -s 'KMS_PASSWORD?Master key: '; export KMS_PASSWORD; echo
+read -s 'SECRET_TO_ENCRYPT?Secret to encrypt: '; export SECRET_TO_ENCRYPT; echo
+./gradlew encryptSecret --quiet --no-daemon
+unset KMS_PASSWORD SECRET_TO_ENCRYPT
+```
+
+출력된 한 줄 전체를 `DB_PASSWORD`의 마스킹된 배포 변수로 등록한다.
+
 홈 화면도 별도 API 없이 `GET /welfare-policies?limit=10`의 `items`를 사용한다.
 
 두 번째 프로세스도 같은 cluster-name/member 목록으로 실행한다. multicast와 auto-detection은 꺼져 있고 TCP/IP seed를 사용한다. Kubernetes/Eureka 등 discovery가 필요한 환경에서는 `HazelcastConfig`의 join discovery를 배포 프로필로 교체하되 cluster-name은 환경별로 분리한다. map은 상세 조회용 `app-policy-detail-v3` 하나이며, key는 `v3:e{epoch}:` prefix이고 backup-count=1, PER_NODE bounded LRU, map TTL이 적용된다. 목록 응답·엔티티·회원별 응답·읽음 상태·락은 저장하지 않는다.
