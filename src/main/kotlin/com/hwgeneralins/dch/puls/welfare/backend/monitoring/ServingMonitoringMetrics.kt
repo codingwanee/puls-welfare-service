@@ -50,6 +50,14 @@ class ServingMonitoringMetrics(
                 .register(registry)
         }
     }.toMap()
+    private val policyUpdateCountTimers = PolicyListScope.entries.flatMap { scope ->
+        PolicyUpdateCountOutcome.entries.map { outcome ->
+            (scope to outcome) to requestTimer("welfare.serving.policy.recent.update.count")
+                .tags("scope", scope.tag, "outcome", outcome.tag)
+                .description("End-to-end recent policy update count query duration")
+                .register(registry)
+        }
+    }.toMap()
     private val repositoryTimers = RepositoryOperation.entries.flatMap { operation ->
         OperationOutcome.entries.map { outcome ->
             (operation to outcome) to requestTimer("welfare.serving.repository.query")
@@ -162,6 +170,14 @@ class ServingMonitoringMetrics(
         sample.stop(policyDetailTimers.getValue(source to outcome))
     }
 
+    fun recordPolicyUpdateCount(
+        sample: Timer.Sample,
+        scope: PolicyListScope,
+        outcome: PolicyUpdateCountOutcome,
+    ) {
+        sample.stop(policyUpdateCountTimers.getValue(scope to outcome))
+    }
+
     fun <T> repository(operation: RepositoryOperation, block: () -> T): T {
         val sample = start()
         return try {
@@ -252,7 +268,12 @@ enum class DetailSource(val tag: String) { CACHE("cache"), DATABASE("database"),
 enum class PolicyDetailOutcome(val tag: String) {
     SUCCESS("success"), NOT_FOUND("not_found"), NOT_AVAILABLE("not_available"), FAILURE("failure")
 }
-enum class RepositoryOperation(val tag: String) { LIST("list"), DETAIL("detail") }
+enum class PolicyUpdateCountOutcome(val tag: String) {
+    SUCCESS("success"), INVALID_REQUEST("invalid_request"), FAILURE("failure")
+}
+enum class RepositoryOperation(val tag: String) {
+    LIST("list"), DETAIL("detail"), RECENT_UPDATE_COUNT("recent_update_count")
+}
 enum class OperationOutcome(val tag: String) { SUCCESS("success"), FAILURE("failure") }
 enum class CacheRequestResult(val tag: String) { HIT("hit"), MISS("miss") }
 enum class CacheOperation(val tag: String) { GET("get"), PUT("put") }

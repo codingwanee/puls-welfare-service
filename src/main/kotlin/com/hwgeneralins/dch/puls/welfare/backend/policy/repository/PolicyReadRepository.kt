@@ -15,5 +15,11 @@ interface PolicyReadRepository {
         limit: Int,
         internalFirst: Boolean,
     ): List<PolicyRecord>
+    fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long
     fun findRegionCatalog(): Map<String, List<String>>
 }

@@ -185,6 +185,13 @@ private class BlockingDetailRepository(
         internalFirst: Boolean,
     ): List<PolicyRecord> = emptyList()
 
+    override fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long = 0
+
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
 }
 
@@ -223,6 +230,13 @@ private class BlockingCountingDetailRepository(
         internalFirst: Boolean,
     ): List<PolicyRecord> = emptyList()
 
+    override fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long = 0
+
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
 }
 
@@ -244,6 +258,13 @@ private class StubRepository(
         requestedRegion = region
         return records.take(limit)
     }
+
+    override fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long = 0
 
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
 }

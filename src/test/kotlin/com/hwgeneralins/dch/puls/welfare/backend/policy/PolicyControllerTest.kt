@@ -1,6 +1,7 @@
 package com.hwgeneralins.dch.puls.welfare.backend.policy
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
 import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCache
 import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheGeneration
 import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyCacheProperties
@@ -21,8 +22,10 @@ import com.hwgeneralins.dch.puls.welfare.backend.policyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry
+import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.springframework.core.io.ClassPathResource
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import java.time.Clock
@@ -33,6 +36,7 @@ import java.time.ZoneId
 class PolicyControllerTest {
     private val repository = MutablePolicyRepository()
     private val objectMapper = jacksonObjectMapper().findAndRegisterModules()
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     private val properties = PolicyProperties()
     private val catalog = RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json"))
     private val cacheProperties = PolicyCacheProperties(enabled = false)
@@ -45,7 +49,9 @@ class PolicyControllerTest {
         cacheProperties, properties, catalog, clock, metrics,
     )
     private val mvc = MockMvcBuilders.standaloneSetup(PolicyController(service, catalog))
-        .setControllerAdvice(GlobalExceptionHandler()).build()
+        .setControllerAdvice(GlobalExceptionHandler())
+        .setMessageConverters(MappingJackson2HttpMessageConverter(objectMapper))
+        .build()
 
     @Test
     fun `home endpoint is removed and regular list supports home page size`() {
@@ -60,6 +66,59 @@ class PolicyControllerTest {
                 jsonPath("$.items[0].id") { value(1) }
                 jsonPath("$.items[0].sido") { value("서울특별시") }
                 jsonPath("$.items[0].sigungu") { value("마포구") }
+            }
+    }
+
+    @Test
+    fun `recent update count defaults to seven calendar days and exposes its range`() {
+        repository.recentUpdateCount = 12
+
+        mvc.get("/v1/welfare-policies/recent-updates/count") {
+            param("sido", "서울특별시")
+            param("sigungu", "마포구")
+        }.andExpect {
+            status { isOk() }
+            jsonPath("$.count") { value(12) }
+            jsonPath("$.updateDays") { value(7) }
+            jsonPath("$.fromDate") { value("2026-07-24") }
+            jsonPath("$.asOfDate") { value("2026-07-30") }
+        }
+
+        assertThat(repository.requestedRecentUpdateRegion).isEqualTo(RegionRequest("서울특별시", "마포구"))
+        assertThat(repository.requestedUpdatedFrom).isEqualTo(LocalDateTime.of(2026, 7, 24, 0, 0))
+        assertThat(repository.requestedUpdatedThrough).isEqualTo(LocalDateTime.of(2026, 7, 30, 12, 0))
+    }
+
+    @Test
+    fun `recent update count supports arbitrary positive days and rejects non-positive days`() {
+        mvc.get("/v1/welfare-policies/recent-updates/count") { param("updateDays", "14") }
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.updateDays") { value(14) }
+                jsonPath("$.fromDate") { value("2026-07-17") }
+            }
+
+        mvc.get("/v1/welfare-policies/recent-updates/count") { param("updateDays", "0") }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value("INVALID_UPDATE_DAYS") }
+                jsonPath("$.message") { value("최근 업데이트 조회 일수는 1 이상이어야 합니다.") }
+            }
+    }
+
+    @Test
+    fun `recent update count validates region and numeric update days`() {
+        mvc.get("/v1/welfare-policies/recent-updates/count") { param("sigungu", "마포구") }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value("INVALID_REGION") }
+            }
+
+        mvc.get("/v1/welfare-policies/recent-updates/count") { param("updateDays", "seven") }
+            .andExpect {
+                status { isBadRequest() }
+                jsonPath("$.code") { value("INVALID_REQUEST") }
+                jsonPath("$.detail") { value("updateDays 값 'seven'의 형식이 올바르지 않습니다.") }
             }
     }
 
@@ -154,6 +213,10 @@ class PolicyControllerTest {
 
 private class MutablePolicyRepository : PolicyReadRepository {
     var detail: PolicyRecord? = null
+    var recentUpdateCount: Long = 0
+    var requestedRecentUpdateRegion: RegionRequest? = null
+    var requestedUpdatedFrom: LocalDateTime? = null
+    var requestedUpdatedThrough: LocalDateTime? = null
     override fun findById(id: Long) = detail
     override fun findVisiblePage(
         region: RegionRequest,
@@ -163,6 +226,17 @@ private class MutablePolicyRepository : PolicyReadRepository {
         limit: Int,
         internalFirst: Boolean,
     ) = listOfNotNull(detail).take(limit)
+    override fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long {
+        requestedRecentUpdateRegion = region
+        requestedUpdatedFrom = updatedFrom
+        requestedUpdatedThrough = updatedThrough
+        return recentUpdateCount
+    }
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
 }
 

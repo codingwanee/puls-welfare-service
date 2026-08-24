@@ -102,6 +102,41 @@ class JdbcPolicyReadRepository(
         .groupBy({ it.first }, { it.second })
         .mapValues { (_, values) -> values.filterNotNull().filter { it.isNotBlank() }.distinct() }
 
+    override fun countVisibleRecentlyUpdated(
+        region: RegionRequest,
+        now: LocalDateTime,
+        updatedFrom: LocalDateTime,
+        updatedThrough: LocalDateTime,
+    ): Long = metrics.repository(RepositoryOperation.RECENT_UPDATE_COUNT) {
+        val regionCondition = if (region.sido == null) "" else "AND $REGION"
+        val params = parameters(region, now)
+            .addValue("updatedFrom", updatedFrom)
+            .addValue("updatedThrough", updatedThrough)
+
+        jdbc.queryForObject(
+            """
+            SELECT COUNT(*)
+              FROM (
+                    SELECT ID
+                      FROM SL_PBC_PREG_WMN_WEFR_SRV
+                     WHERE $VISIBLE
+                       $regionCondition
+                       AND INP_DTHMS >= :updatedFrom
+                       AND INP_DTHMS <= :updatedThrough
+                    UNION
+                    SELECT ID
+                      FROM SL_PBC_PREG_WMN_WEFR_SRV
+                     WHERE $VISIBLE
+                       $regionCondition
+                       AND MDF_DTHMS >= :updatedFrom
+                       AND MDF_DTHMS <= :updatedThrough
+                   ) recent_updates
+            """.trimIndent(),
+            params,
+            Long::class.java,
+        ) ?: 0L
+    }
+
     private fun parameters(region: RegionRequest, now: LocalDateTime) = MapSqlParameterSource()
         .addValue("sido", region.sido)
         .addValue("sigungu", region.sigungu)

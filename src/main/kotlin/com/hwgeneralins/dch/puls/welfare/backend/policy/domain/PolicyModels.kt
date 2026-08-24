@@ -120,6 +120,18 @@ data class CursorPageDto<T>(
     val hasNext: Boolean,
 )
 
+@Schema(description = "최근 생성·수정된 게시 정책 건수")
+data class RecentPolicyUpdateCountDto(
+    @field:Schema(description = "최근 생성·수정된 정책 수", example = "12")
+    val count: Long,
+    @field:Schema(description = "적용된 최근 업데이트 조회 일수", example = "14", minimum = "1")
+    val updateDays: Int,
+    @field:Schema(description = "조회 시작일(포함)", example = "2026-08-18", type = "string", format = "date")
+    val fromDate: LocalDate,
+    @field:Schema(description = "조회 기준일(포함)", example = "2026-08-24", type = "string", format = "date")
+    val asOfDate: LocalDate,
+)
+
 @Schema(description = "시도·시군구 카탈로그")
 data class RegionCatalogDto(
     @field:Schema(description = "시도 목록")

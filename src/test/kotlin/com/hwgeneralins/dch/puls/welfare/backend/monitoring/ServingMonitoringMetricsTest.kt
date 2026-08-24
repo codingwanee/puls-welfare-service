@@ -26,6 +26,9 @@ class ServingMonitoringMetricsTest {
             metrics.start(), PolicyListScope.SIGUNGU, PolicyPage.NEXT, PolicyListOutcome.SUCCESS, itemCount = 17,
         )
         metrics.recordPolicyDetail(metrics.start(), DetailSource.COALESCED, PolicyDetailOutcome.NOT_FOUND)
+        metrics.recordPolicyUpdateCount(
+            metrics.start(), PolicyListScope.SIGUNGU, PolicyUpdateCountOutcome.SUCCESS,
+        )
         assertThatThrownBy {
             metrics.repository(RepositoryOperation.DETAIL) { error("database unavailable") }
         }.isInstanceOf(IllegalStateException::class.java)
@@ -42,6 +45,9 @@ class ServingMonitoringMetricsTest {
         ).summary().totalAmount()).isEqualTo(17.0)
         assertThat(registry.get("welfare.serving.policy.detail").tags(
             "source", "coalesced", "outcome", "not_found",
+        ).timer().count()).isEqualTo(1)
+        assertThat(registry.get("welfare.serving.policy.recent.update.count").tags(
+            "scope", "sigungu", "outcome", "success",
         ).timer().count()).isEqualTo(1)
         assertThat(registry.get("welfare.serving.repository.query").tags(
             "operation", "detail", "outcome", "failure",

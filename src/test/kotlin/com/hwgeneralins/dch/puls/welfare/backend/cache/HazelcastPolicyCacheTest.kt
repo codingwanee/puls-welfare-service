@@ -81,6 +81,12 @@ class HazelcastPolicyCacheTest {
                 limit: Int,
                 internalFirst: Boolean,
             ) = emptyList<PolicyRecord>()
+            override fun countVisibleRecentlyUpdated(
+                region: RegionRequest,
+                now: LocalDateTime,
+                updatedFrom: LocalDateTime,
+                updatedThrough: LocalDateTime,
+            ): Long = 0
             override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
         }
         val service = PolicyQueryService(

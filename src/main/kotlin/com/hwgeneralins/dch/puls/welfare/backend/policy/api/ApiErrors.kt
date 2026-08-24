@@ -22,7 +22,13 @@ import org.springframework.web.servlet.NoHandlerFoundException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 import java.time.OffsetDateTime
 
-enum class BusinessErrorCode { POLICY_NOT_FOUND, POLICY_NOT_AVAILABLE, INVALID_CURSOR, INVALID_REGION }
+enum class BusinessErrorCode {
+    POLICY_NOT_FOUND,
+    POLICY_NOT_AVAILABLE,
+    INVALID_CURSOR,
+    INVALID_REGION,
+    INVALID_UPDATE_DAYS,
+}
 
 class PolicyApiException(
     val status: HttpStatus,

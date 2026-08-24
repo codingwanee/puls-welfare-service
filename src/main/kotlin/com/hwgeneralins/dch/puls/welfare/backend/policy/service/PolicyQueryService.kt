@@ -11,6 +11,7 @@ import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyDetailOutcome
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyListOutcome
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyListScope
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyPage
+import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyUpdateCountOutcome
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.BusinessErrorCode
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.PolicyApiException
@@ -19,6 +20,7 @@ import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.CursorPageDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyDetailDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyListItemDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RegionRequest
+import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RecentPolicyUpdateCountDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.repository.PolicyReadRepository
 import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
 import org.springframework.http.HttpStatus
@@ -125,6 +127,43 @@ class PolicyQueryService(
         }
     }
 
+    fun recentUpdateCount(sido: String?, sigungu: String?, updateDays: Int): RecentPolicyUpdateCountDto {
+        val sample = metrics.start()
+        val scope = scope(sido, sigungu)
+        try {
+            if (updateDays < 1) {
+                throw PolicyApiException(
+                    HttpStatus.BAD_REQUEST,
+                    BusinessErrorCode.INVALID_UPDATE_DAYS,
+                    "최근 업데이트 조회 일수는 1 이상이어야 합니다.",
+                )
+            }
+            val region = region(sido, sigungu)
+            val now = LocalDateTime.now(clock)
+            val fromDate = now.toLocalDate().minusDays(updateDays.toLong() - 1)
+            val count = repository.countVisibleRecentlyUpdated(
+                region = region,
+                now = now,
+                updatedFrom = fromDate.atStartOfDay(),
+                updatedThrough = now,
+            )
+            return RecentPolicyUpdateCountDto(
+                count = count,
+                updateDays = updateDays,
+                fromDate = fromDate,
+                asOfDate = now.toLocalDate(),
+            ).also {
+                metrics.recordPolicyUpdateCount(sample, scope, PolicyUpdateCountOutcome.SUCCESS)
+            }
+        } catch (exception: PolicyApiException) {
+            metrics.recordPolicyUpdateCount(sample, scope, PolicyUpdateCountOutcome.INVALID_REQUEST)
+            throw exception
+        } catch (cause: Throwable) {
+            metrics.recordPolicyUpdateCount(sample, scope, PolicyUpdateCountOutcome.FAILURE)
+            throw cause
+        }
+    }
+
     private fun loadDetail(id: Long, cacheKey: String?): PolicyDetailDto {
         val policy = repository.findById(id)
             ?: throw PolicyApiException(HttpStatus.NOT_FOUND, BusinessErrorCode.POLICY_NOT_FOUND, "정책을 찾을 수 없습니다.")
@@ -151,6 +190,12 @@ class PolicyQueryService(
             throw PolicyApiException(HttpStatus.BAD_REQUEST, BusinessErrorCode.INVALID_REGION, "유효하지 않은 지역입니다.")
         }
         return RegionRequest(normalizedSido, normalizedSigungu)
+    }
+
+    private fun scope(sido: String?, sigungu: String?): PolicyListScope = when {
+        !sigungu.isNullOrBlank() -> PolicyListScope.SIGUNGU
+        !sido.isNullOrBlank() -> PolicyListScope.SIDO
+        else -> PolicyListScope.ALL
     }
 
     private fun minOfNotNull(default: Instant, candidate: Instant?): Instant =

@@ -74,6 +74,45 @@ class JdbcPolicyReadRepositoryTest {
     }
 
     @Test
+    fun `recent update count applies region visibility and deduplicates created and modified policies`() {
+        val now = LocalDateTime.of(2026, 7, 30, 12, 0)
+        val from = LocalDateTime.of(2026, 7, 24, 0, 0)
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = TIMESTAMP '2026-07-01 00:00:00', MDF_DTHMS = NULL")
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = ? WHERE ID = 1", from)
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET MDF_DTHMS = ? WHERE ID = 2", now)
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = ?, MDF_DTHMS = ? WHERE ID = 3", from, now)
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET MDF_DTHMS = ? WHERE ID IN (4, 5, 6, 7, 8)", now)
+
+        val count = repository.countVisibleRecentlyUpdated(
+            RegionRequest("서울특별시", "마포구"),
+            now = now,
+            updatedFrom = from,
+            updatedThrough = now,
+        )
+
+        assertThat(count).isEqualTo(3)
+    }
+
+    @Test
+    fun `recent update count includes the start boundary and excludes outside timestamps`() {
+        val now = LocalDateTime.of(2026, 7, 30, 12, 0)
+        val from = LocalDateTime.of(2026, 7, 24, 0, 0)
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = TIMESTAMP '2026-07-01 00:00:00', MDF_DTHMS = NULL")
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = ? WHERE ID = 1", from.minusSeconds(1))
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET MDF_DTHMS = ? WHERE ID = 2", now.plusSeconds(1))
+        jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET MDF_DTHMS = ? WHERE ID = 3", from)
+
+        val count = repository.countVisibleRecentlyUpdated(
+            RegionRequest("서울특별시", "마포구"),
+            now = now,
+            updatedFrom = from,
+            updatedThrough = now,
+        )
+
+        assertThat(count).isEqualTo(1)
+    }
+
+    @Test
     fun `database applies deterministic keyset ordering and limit`() {
         val now = LocalDateTime.of(2026, 7, 30, 12, 0)
         jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET POL_DAT_TYP = 'INTERNAL' WHERE ID = 1")

@@ -4,6 +4,7 @@
 |---|---|---|
 | `GET` | `/api/wsbd/v1/regions` | 전체 시도·시군구 목록 조회 |
 | `GET` | `/api/wsbd/v1/welfare-policies` | 게시 정책 목록 cursor 조회 |
+| `GET` | `/api/wsbd/v1/welfare-policies/recent-updates/count` | 최근 생성·수정된 게시 정책 건수 조회 |
 | `GET` | `/api/wsbd/v1/welfare-policies/{id}` | 게시 정책 상세 조회 |
 
 ### 공통 요청 헤더
@@ -164,7 +165,53 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies' \
 
 샘플 cursor는 문서 형식 설명용이다. 실제 연동에서는 반드시 직전 응답의 `nextCursor`를 사용한다.
 
-## 4. 정책 상세 조회
+## 4. 최근 정책 업데이트 건수 조회
+
+### 요청
+
+```http
+GET /api/wsbd/v1/welfare-policies/recent-updates/count?sido={시도명}&sigungu={시군구명}&updateDays={조회일수}
+```
+
+| 파라미터 | 타입 | 필수 | 기본값 | 설명 |
+|---|---|---:|---|---|
+| `sido` | string | N | 없음 | 시도명. 시도·시군구를 모두 생략하면 전체 조회 |
+| `sigungu` | string | N | 없음 | 시군구명. 시도 없이 입력할 수 없음 |
+| `updateDays` | integer | N | `7` | 최근 업데이트 조회 일수. 1 이상의 정수 |
+
+지역 조회 범위와 지역값 검증은 정책 목록 API와 동일하다. 생성 시각 또는 시스템 수정 시각이 조회 기간에 포함된 정책을 집계하며, 두 시각이 모두 포함되더라도 한 건으로 센다. 게시 중이고 현재 노출 가능한 정책만 포함한다.
+
+기간은 Asia/Seoul 기준 오늘을 포함한 달력일로 계산한다. 예를 들어 기준일이 2026-08-24이면 `updateDays=7`은 2026-08-18 00:00부터 요청 시각까지이다.
+
+```bash
+curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/recent-updates/count' \
+  --data-urlencode 'sido=서울특별시' \
+  --data-urlencode 'sigungu=마포구' \
+  --data-urlencode 'updateDays=7' \
+  -H 'Accept: application/json'
+```
+
+### 성공 응답 `200 OK`
+
+```json
+{
+  "count": 12,
+  "updateDays": 7,
+  "fromDate": "2026-08-18",
+  "asOfDate": "2026-08-24"
+}
+```
+
+| 필드 | 타입 | Null 가능 | 설명 |
+|---|---|---:|---|
+| `count` | integer(int64) | N | 조회 기간에 생성·수정된 정책 수 |
+| `updateDays` | integer | N | 적용된 최근 업데이트 조회 일수 |
+| `fromDate` | string(date) | N | 조회 시작일(포함) |
+| `asOfDate` | string(date) | N | 조회 기준일(포함) |
+
+`updateDays`가 1 미만이면 `400 INVALID_UPDATE_DAYS`로 응답한다.
+
+## 5. 정책 상세 조회
 
 ### 요청
 
@@ -230,7 +277,7 @@ curl '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/94' \
 | `localOrdinances` | string | Y | 관련 자치법규 |
 | `statutes` | string | Y | 관련 법령 |
 
-## 5. 오류 응답
+## 6. 오류 응답
 
 wsbd 오류는 admin-backend의 공통 오류 응답과 동일한 형식으로 응답한다.
 
