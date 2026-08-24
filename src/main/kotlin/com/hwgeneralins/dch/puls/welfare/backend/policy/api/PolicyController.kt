@@ -51,7 +51,7 @@ class PolicyController(
 
     @Operation(
         summary = "최근 정책 업데이트 건수 조회",
-        description = "지역 조건에 해당하며 요청한 최근 일수 동안 생성·수정된 게시 정책 수를 조회합니다.",
+        description = "지역 조건에 해당하며 요청한 최근 일수 동안 수정된 게시 정책 수를 조회합니다.",
     )
     @GetMapping("/welfare-policies/recent-updates/count")
     fun recentUpdateCount(

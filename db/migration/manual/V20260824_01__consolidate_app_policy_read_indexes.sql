@@ -1,5 +1,5 @@
 -- Development-environment consolidation of maternal welfare policy indexes.
--- Keeps PRIMARY and UK1 intact, and replaces numbered secondary indexes I01-I09 with final I01-I07.
+-- Keeps PRIMARY and UK1 intact, and replaces numbered secondary indexes I01-I09 with final I01-I06.
 
 ALTER TABLE SL_PBC_PREG_WMN_WEFR_SRV
     DROP INDEX I01_SL_PBC_PREG_WMN_WEFR_SRV,
@@ -24,8 +24,6 @@ ALTER TABLE SL_PBC_PREG_WMN_WEFR_SRV
     ADD INDEX I05_SL_PBC_PREG_WMN_WEFR_SRV
         (POL_ST_VL, EXPO_ND_DTHMS, EXPO_STR_DTHMS),
     ADD INDEX I06_SL_PBC_PREG_WMN_WEFR_SRV
-        (POL_ST_VL, INP_DTHMS, AP_ARE_SD, AP_ARE_SGNG),
-    ADD INDEX I07_SL_PBC_PREG_WMN_WEFR_SRV
         (POL_ST_VL, MDF_DTHMS, AP_ARE_SD, AP_ARE_SGNG),
 
     ALGORITHM = INPLACE,

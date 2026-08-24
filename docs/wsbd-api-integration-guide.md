@@ -4,7 +4,7 @@
 |---|---|---|
 | `GET` | `/api/wsbd/v1/regions` | 전체 시도·시군구 목록 조회 |
 | `GET` | `/api/wsbd/v1/welfare-policies` | 게시 정책 목록 cursor 조회 |
-| `GET` | `/api/wsbd/v1/welfare-policies/recent-updates/count` | 최근 생성·수정된 게시 정책 건수 조회 |
+| `GET` | `/api/wsbd/v1/welfare-policies/recent-updates/count` | 최근 수정된 게시 정책 건수 조회 |
 | `GET` | `/api/wsbd/v1/welfare-policies/{id}` | 게시 정책 상세 조회 |
 
 ### 공통 요청 헤더
@@ -179,7 +179,7 @@ GET /api/wsbd/v1/welfare-policies/recent-updates/count?sido={시도명}&sigungu=
 | `sigungu` | string | N | 없음 | 시군구명. 시도 없이 입력할 수 없음 |
 | `updateDays` | integer | N | `7` | 최근 업데이트 조회 일수. 1 이상의 정수 |
 
-지역 조회 범위와 지역값 검증은 정책 목록 API와 동일하다. 생성 시각 또는 시스템 수정 시각이 조회 기간에 포함된 정책을 집계하며, 두 시각이 모두 포함되더라도 한 건으로 센다. 게시 중이고 현재 노출 가능한 정책만 포함한다.
+지역 조회 범위와 지역값 검증은 정책 목록 API와 동일하다. 시스템 수정 시각이 조회 기간에 포함된 정책을 집계하며, 게시 중이고 현재 노출 가능한 정책만 포함한다.
 
 기간은 Asia/Seoul 기준 오늘을 포함한 달력일로 계산한다. 예를 들어 기준일이 2026-08-24이면 `updateDays=7`은 2026-08-18 00:00부터 요청 시각까지이다.
 
@@ -204,7 +204,7 @@ curl --get '{WSBD_ORIGIN}/api/wsbd/v1/welfare-policies/recent-updates/count' \
 
 | 필드 | 타입 | Null 가능 | 설명 |
 |---|---|---:|---|
-| `count` | integer(int64) | N | 조회 기간에 생성·수정된 정책 수 |
+| `count` | integer(int64) | N | 조회 기간에 수정된 정책 수 |
 | `updateDays` | integer | N | 적용된 최근 업데이트 조회 일수 |
 | `fromDate` | string(date) | N | 조회 시작일(포함) |
 | `asOfDate` | string(date) | N | 조회 기준일(포함) |

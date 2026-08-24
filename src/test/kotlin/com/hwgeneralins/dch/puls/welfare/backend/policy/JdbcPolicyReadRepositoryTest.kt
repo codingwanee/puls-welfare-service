@@ -74,7 +74,7 @@ class JdbcPolicyReadRepositoryTest {
     }
 
     @Test
-    fun `recent update count applies region visibility and deduplicates created and modified policies`() {
+    fun `recent update count uses modified timestamp with region and visibility filters`() {
         val now = LocalDateTime.of(2026, 7, 30, 12, 0)
         val from = LocalDateTime.of(2026, 7, 24, 0, 0)
         jdbc.update("UPDATE SL_PBC_PREG_WMN_WEFR_SRV SET INP_DTHMS = TIMESTAMP '2026-07-01 00:00:00', MDF_DTHMS = NULL")
@@ -90,7 +90,7 @@ class JdbcPolicyReadRepositoryTest {
             updatedThrough = now,
         )
 
-        assertThat(count).isEqualTo(3)
+        assertThat(count).isEqualTo(2)
     }
 
     @Test

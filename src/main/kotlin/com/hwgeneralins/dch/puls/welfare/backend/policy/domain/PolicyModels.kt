@@ -120,9 +120,9 @@ data class CursorPageDto<T>(
     val hasNext: Boolean,
 )
 
-@Schema(description = "최근 생성·수정된 게시 정책 건수")
+@Schema(description = "최근 수정된 게시 정책 건수")
 data class RecentPolicyUpdateCountDto(
-    @field:Schema(description = "최근 생성·수정된 정책 수", example = "12")
+    @field:Schema(description = "최근 수정된 정책 수", example = "12")
     val count: Long,
     @field:Schema(description = "적용된 최근 업데이트 조회 일수", example = "14", minimum = "1")
     val updateDays: Int,

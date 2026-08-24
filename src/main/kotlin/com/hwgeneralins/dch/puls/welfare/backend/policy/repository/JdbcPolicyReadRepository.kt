@@ -116,21 +116,11 @@ class JdbcPolicyReadRepository(
         jdbc.queryForObject(
             """
             SELECT COUNT(*)
-              FROM (
-                    SELECT ID
-                      FROM SL_PBC_PREG_WMN_WEFR_SRV
-                     WHERE $VISIBLE
-                       $regionCondition
-                       AND INP_DTHMS >= :updatedFrom
-                       AND INP_DTHMS <= :updatedThrough
-                    UNION
-                    SELECT ID
-                      FROM SL_PBC_PREG_WMN_WEFR_SRV
-                     WHERE $VISIBLE
-                       $regionCondition
-                       AND MDF_DTHMS >= :updatedFrom
-                       AND MDF_DTHMS <= :updatedThrough
-                   ) recent_updates
+              FROM SL_PBC_PREG_WMN_WEFR_SRV
+             WHERE $VISIBLE
+               $regionCondition
+               AND MDF_DTHMS >= :updatedFrom
+               AND MDF_DTHMS <= :updatedThrough
             """.trimIndent(),
             params,
             Long::class.java,
