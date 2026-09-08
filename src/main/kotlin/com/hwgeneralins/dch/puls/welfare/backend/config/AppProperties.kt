@@ -17,7 +17,7 @@ data class PolicyCacheProperties(
     val enabled: Boolean = true,
     val clusterName: String = "clovr-welfare-local",
     val tcpIpEnabled: Boolean = true,
-    val members: List<String> = listOf("127.0.0.1:5701", "127.0.0.1:5702"),
+    val members: List<String> = emptyList(),
     val port: Int = 5701,
     val portAutoIncrement: Boolean = true,
     val backupCount: Int = 1,

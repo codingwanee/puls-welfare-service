@@ -92,7 +92,7 @@ data class PolicyDetailDto(
     val documents: String?,
     @field:Schema(description = "접수기관명", example = "관할 동주민센터")
     val receivingAgencyName: String?,
-    @field:Schema(description = "문의처", example = "아동여성과/02-820-9259")
+    @field:Schema(description = "문의처", example = "아동여성과/-")
     val contact: String?,
     @field:Schema(description = "온라인 신청 사이트 URL", example = "https://www.gov.kr/portal/rcvfvrSvc/main")
     val onlineApplicationUrl: String?,

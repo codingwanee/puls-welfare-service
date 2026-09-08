@@ -56,4 +56,19 @@ class CursorCodecTest {
                 assertThat(it.businessCode).isEqualTo(BusinessErrorCode.INVALID_CURSOR)
             }
     }
+
+    @Test
+    fun `compact cursor with incomplete input timestamp is rejected with stable error`() {
+        listOf(
+            "[\"v1\",1,0,0,null,null,1,null,99]",
+            "[\"v1\",1,0,0,null,null,null,0,99]",
+        ).forEach { json ->
+            val malformed = Base64.getUrlEncoder().withoutPadding().encodeToString(json.toByteArray())
+
+            assertThatThrownBy { codec.decode(malformed) }
+                .isInstanceOfSatisfying(PolicyApiException::class.java) {
+                    assertThat(it.businessCode).isEqualTo(BusinessErrorCode.INVALID_CURSOR)
+                }
+        }
+    }
 }

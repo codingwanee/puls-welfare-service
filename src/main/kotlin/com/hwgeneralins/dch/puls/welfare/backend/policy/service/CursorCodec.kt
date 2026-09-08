@@ -55,7 +55,11 @@ class CursorCodec(private val objectMapper: ObjectMapper) {
             ?: error("Missing sort version")
         val inputAtSecond = optionalLong(node, 6)
         val inputAtNano = optionalInt(node, 7)
-        require((inputAtSecond == null) == (inputAtNano == null))
+        val inputAt = when {
+            inputAtSecond == null && inputAtNano == null -> null
+            inputAtSecond != null && inputAtNano != null -> localDateTime(inputAtSecond, inputAtNano)
+            else -> error("Incomplete input timestamp")
+        }
 
         return PolicyCursor(
             sortVersion = sortVersion,
@@ -63,7 +67,7 @@ class CursorCodec(private val objectMapper: ObjectMapper) {
             sourceRank = requiredInt(node, 3),
             deadline = optionalLong(node, 4)?.let(LocalDate::ofEpochDay),
             deadlineGroup = optionalInt(node, 5),
-            inputAt = inputAtSecond?.let { localDateTime(it, inputAtNano!!) },
+            inputAt = inputAt,
             id = requiredLong(node, 8),
         )
     }

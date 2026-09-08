@@ -69,6 +69,11 @@ class HazelcastPolicyCacheTest {
         assertThat(cache.getDetail("v4:policy:1")).isNull()
         assertThat(metrics.counter("policy.cache.fallback", "map", PolicyCacheMaps.DETAIL_V4).count()).isEqualTo(1.0)
 
+        val detail = PolicyDtoMapper().toDetail(policyRecord())
+        cache.putDetail("v4:policy:1", CacheEnvelope(detail, Instant.now().plusSeconds(60)))
+        assertThat(metrics.get("welfare.serving.cache.fallback").tag("operation", "put").counter().count())
+            .isEqualTo(1.0)
+
         val objectMapper = jacksonObjectMapper().findAndRegisterModules()
         val policyProperties = PolicyProperties()
         val repository = object : PolicyReadRepository {
