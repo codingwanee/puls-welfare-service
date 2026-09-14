@@ -28,14 +28,19 @@ import kotlin.test.*
 class RegionReloadHttpTest {
     @TempDir lateinit var dir: Path
 
-    @Test fun `external file replacement is visible through existing HTTP API without restarting`() {
+    @Test fun `application yaml path changes are visible through existing HTTP API without restarting`() {
         val original = ClassPathResource("regions/korea_sido_sigungu_20260630.json").inputStream.use { it.readBytes() }
         val path = dir.resolve("current.json")
         Files.write(path, original)
+        val release = dir.resolve("release.json")
+        Files.writeString(release, original.toString(Charsets.UTF_8).replace("종로구", "종로신구"))
+        val config = dir.resolve("application.yml")
+        fun configure(file: Path) = Files.writeString(config, "region:\n  catalog:\n    sido-sigungu-resource: '${file.toUri()}'\n")
+        configure(path)
         SpringApplicationBuilder(Config::class.java).run(
             "--server.port=0", "--server.address=127.0.0.1", "--server.servlet.context-path=/api/wsbd",
             "--region.catalog.reload.enabled=true", "--region.catalog.reload.token=test-token",
-            "--region.catalog.sido-sigungu-resource=${path.toUri()}", "--region.catalog.next-sido-sigungu-resource=",
+            "--spring.config.location=${config.toUri()}", "--region.catalog.next-sido-sigungu-resource=",
             "--spring.jmx.enabled=false",
         ).use { context ->
             val port = (context as ServletWebServerApplicationContext).webServer.port
@@ -51,15 +56,18 @@ class RegionReloadHttpTest {
             assertTrue(before.body().contains("종로구"))
             assertEquals(401, request("POST", "/internal/regions/reload", false).statusCode())
             assertEquals(401, request("GET", "/internal;ignored/regions/status", false).statusCode())
-            Files.writeString(path, original.toString(Charsets.UTF_8).replace("종로구", "종로신구"))
+            configure(release)
             assertEquals(200, request("POST", "/internal/regions/reload").statusCode())
             val after = request("GET", "/v1/regions", false)
             assertEquals(200, after.statusCode())
             assertTrue(after.body().contains("종로신구"))
-            Files.writeString(path, "invalid")
+            Files.writeString(config, "region: [invalid")
             assertEquals(422, request("POST", "/internal/regions/reload").statusCode())
             assertEquals(after.body(), request("GET", "/v1/regions", false).body())
-            Files.write(path, original)
+            configure(dir.resolve("missing.json"))
+            assertEquals(503, request("POST", "/internal/regions/reload").statusCode())
+            assertEquals(after.body(), request("GET", "/v1/regions", false).body())
+            configure(path)
             assertEquals(200, request("POST", "/internal/regions/reload").statusCode())
             assertEquals(before.body(), request("GET", "/v1/regions", false).body())
         }

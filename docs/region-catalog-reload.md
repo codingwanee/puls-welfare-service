@@ -79,37 +79,68 @@ REGION_CATALOG_RELOAD_TOKEN=<운영 비밀 값>
 REGION_CATALOG_INSTANCE_ID=<고유 인스턴스 이름>
 ```
 
-기본값은 reload 비활성, 기존 classpath 파일 사용이다. 활성화 상태에서 classpath 리소스 또는 빈 토큰은 기동 오류다. 인스턴스 ID 미설정 시 호스트명을 사용한다. 초기 파일 로딩이 실패하면 기동 실패하며 번들 파일로 대체하지 않는다.
+저장소 기본 설정은 reload 비활성화다. 로컬에서 사용하려면 `REGION_CATALOG_RELOAD_ENABLED=true`, `REGION_CATALOG_RELOAD_TOKEN`, `REGION_CATALOG_SIDO_SIGUNGU_RESOURCE=file:<외부 JSON 경로>`를 지정하고 시작한다. 배포 환경에서는 외부 JSON의 절대 경로를 지정한다. 활성화 상태에서 classpath 리소스 또는 빈 토큰은 기동 오류다. 인스턴스 ID 미설정 시 호스트명을 사용한다. 초기 파일 로딩이 실패하면 기동 실패하며 번들 파일로 대체하지 않는다.
 
-wabd는 `REGION_CATALOG_NEXT_SIDO_SIGUNGU_RESOURCE=file:/opt/welfare/regions/next.json`이 설정돼 있으면 현재·차기를 함께 읽는다. 차기만 잘못돼도 둘 다 교체하지 않는다. 차기 경로의 추가·제거는 설정 변경이므로 재기동해야 한다. 현재와 차기 내용은 각각 설정된 경로의 파일 교체로 변경하며 자동 승격은 없다. 차기를 사용하지 않으면 해당 변수를 비워 둔다.
+wabd는 `REGION_CATALOG_NEXT_SIDO_SIGUNGU_RESOURCE=file:/opt/welfare/regions/next.json`이 설정돼 있으면 현재·차기를 함께 읽는다. 차기만 잘못돼도 둘 다 교체하지 않는다. 현재·차기 경로 변경과 차기 추가·제거는 YAML 수정 후 reload로 반영하며 자동 승격은 없다. 차기를 사용하지 않으면 해당 변수를 비워 둔다.
 
 ## API
 
 | 작업 | 경로 |
 |---|---|
-| 다시 읽기 | `POST /api/wsbd/internal/regions/reload` |
+| 설정과 JSON 다시 읽기 | `POST /api/wsbd/internal/regions/reload` |
 | 메모리 적용 상태 | `GET /api/wsbd/internal/regions/status` |
 
-두 API는 `Authorization: Bearer <운영 토큰>`이 필요하며 운영망에서만 접근시킨다. POST 본문은 없고 파일 경로를 받지 않는다. 적용 상태 조회는 파일을 다시 읽지 않는다.
+wabd는 `/api/wabd`를 사용한다. 두 API는 `Authorization: Bearer <운영 토큰>`이 필요하다. POST 본문은 없다.
 
-POST 응답에는 `application`, `instanceId`, `result`, `checkedAt`, `snapshotAppliedAt`, `active`, `next`가 포함된다. `active`와 `next`는 `sha256`, `sourceFile`, `sidoCount`, `sigunguCount`를 담는다. wsbd의 next는 null이다. 같은 파일이면 `UNCHANGED`, 변경되면 `RELOADED`이며 모두 200이다. GET은 `result`, `checkedAt` 대신 `lastReloadAttemptAt`, `lastReloadResult`를 반환한다. 인증 거절·동시 호출 거절은 실제 로딩 시도로 기록하지 않는다.
+reload마다 실행 중인 애플리케이션의 설정 위치와 활성 프로필을 기준으로 설정 파일을 다시 읽고 `region.catalog.sido-sigungu-resource`에 지정된 JSON을 읽는다. wabd는 `region.catalog.next-sido-sigungu-resource`도 함께 읽는다. JSON 파일을 새 이름으로 배포한 뒤 YAML의 경로를 변경하고 POST를 호출한다. 차기 경로 추가·변경·제거도 반영된다. 파일 경로는 `file:` 리소스여야 한다.
 
-오류는 401(인증), 409(동시 reload), 422(파일 내용·크기 검증), 503(파일 읽기), 500(파생 데이터 구성 실패)로 구분한다. 교체 전 실패하면 기존 정상 데이터를 계속 사용한다. 응답 유실 시 status를 확인하거나 재호출한다. POST는 해당 인스턴스에만 적용되며 로드밸런서에 한 번 호출하는 것으로 전체 반영되지 않는다.
+환경변수·실행 인자가 YAML보다 우선하는 규칙은 그대로 유지된다. 예를 들어 `REGION_CATALOG_SIDO_SIGUNGU_RESOURCE`를 설정했다면 YAML placeholder의 기본값만 바꿔도 환경변수 값이 우선한다. 실행 중인 프로세스의 환경변수를 외부 셸에서 바꿀 수는 없다. reload가 토큰·DB 설정 등 다른 애플리케이션 설정이나 빈을 갱신하지는 않는다.
+
+Gradle/IDE가 이 프로젝트의 `build/resources/main/application.yml` 복사본으로 실행되는 경우, reload는 대응하는 `src/main/resources`의 YAML을 직접 읽는다. 따라서 소스 YAML의 JSON 경로만 수정하고 reload하면 된다. 외부 설정 파일·프로필·환경변수·실행 인자의 우선순위는 유지된다. 이 코드 변경을 실행 중인 서버에 적용할 때는 한 번 재시작해야 한다.
+
+JAR 실행에서는 외부 application.yml을 수정한다. JAR 안에 묶인 YAML은 소스 파일을 수정해도 바뀌지 않는다.
+
+```bash
+# 로컬 실행 (IDE에서 직접 실행해도 동일)
+./gradlew bootRun
+
+# YAML의 region.catalog.sido-sigungu-resource를 새 file: 경로로 수정한 뒤 호출
+curl --fail-with-body -X POST \
+  'http://localhost:8081/api/wsbd/internal/regions/reload' \
+  -H "Authorization: Bearer ${REGION_CATALOG_RELOAD_TOKEN}"
+```
+
+응답의 `active.sha256`으로 적용 내용을 확인한다. `active.sourceFile`은 JSON 메타데이터의 원본 자료명이다. 동일 내용이면 `UNCHANGED`, 변경되면 `RELOADED`를 반환한다. GET은 파일을 다시 읽지 않고 메모리 상태를 반환한다.
+
+설정 오류는 422(`REGION_CATALOG_CONFIG_INVALID`), JSON 검증 오류는 422, 파일 읽기 실패는 503이다. 인증 실패 401, 동시 reload 409, 데이터 구성 실패 500은 기존과 같다. 설정·현재 JSON·차기 JSON 중 하나라도 실패하면 기존 정상 데이터를 유지한다. 각 인스턴스에 개별 호출해야 한다.
 
 ## 반영 순서
 
 1. 새 JSON을 생성하고 diff를 검토한다. 양쪽 서버에 동일한 바이트의 현재 파일을 배포한다. 해시는 `shasum -a 256 current.json`으로 확인한다.
 2. 이전 파일과 해시를 백업하고 배포·reload 작업을 직렬화한다.
 3. 정책 지역 변경이 있다면 싱크·재처리 등 쓰기 작업을 중지하고 진행 중인 작업의 종료를 확인한다. 혼합 버전을 허용할 수 없다면 조회 트래픽도 점검 상태로 둔다.
-4. 같은 디렉터리에 임시 파일을 업로드한 뒤 rename으로 교체한다. 컨테이너는 디렉터리 마운트로 교체된 파일이 보이는지 확인한다. 파일 크기 상한은 각각 5 MiB다.
+4. 같은 디렉터리에 새 버전 JSON을 배포하고 `application.yml`의 카탈로그 경로를 새 파일로 수정한다. 컨테이너는 디렉터리 마운트로 교체된 파일이 보이는지 확인한다. 파일 크기 상한은 각각 5 MiB다.
 5. wabd 인스턴스별 reload 및 해시 확인을 수행한다. 카탈로그, 정규화기, 현재→차기 CSV 매핑이 함께 교체된다.
 6. 정책 변경이 있으면 기존 개편 절차대로 **CSV 적용 → 외부 정책 재처리**를 수행한다. reload 자체는 정책 DB를 수정하거나 정책 캐시 epoch를 변경하지 않는다. 기존 정책 변경 로직의 epoch 갱신은 유지된다.
 7. wsbd 인스턴스별 reload 및 해시 확인을 수행한다. 지역 목록과 정책 조회 조건 검증에 새 데이터가 적용된다.
 8. 공개 지역 조회·신규 지역 검색 결과 확인 후 트래픽과 스케줄러를 재개한다.
 
-각 요청·배치는 시작 시 확보한 데이터를 끝까지 사용하므로 실행 중 배치는 reload 뒤에도 옛 지역을 저장할 수 있다. 운영 전환 중 배치 중지 절차를 생략하지 않는다. 카탈로그 rollback은 이전 파일 복원 후 모든 인스턴스 reload로 수행한다. 정책 DB까지 바꿨다면 DB 복구·재처리도 별도로 수행해야 한다.
+각 요청·배치는 시작 시 확보한 데이터를 끝까지 사용하므로 실행 중 배치는 reload 뒤에도 옛 지역을 저장할 수 있다. 운영 전환 중 배치 중지 절차를 생략하지 않는다. 카탈로그 rollback은 YAML 경로를 이전 파일로 되돌리고 모든 인스턴스를 reload한다. 정책 DB까지 바꿨다면 DB 복구·재처리도 별도로 수행해야 한다.
 
 ## 인스턴스 호출 스크립트
+
+단일 인스턴스에서 curl로 리로드와 적용 상태 조회를 한 번에 실행하려면 다음 스크립트를 사용한다. 서버와 동일한 토큰을 환경변수로 설정한 뒤 실행하며, 로컬에서 생성한 토큰 파일이 있으면 아래처럼 불러올 수 있다.
+
+```bash
+# 저장소 루트에서 실행
+source build/local/region-catalog-reload.env
+bash scripts/reload-region-catalog.sh
+
+# 다른 서버: 해당 서버의 토큰을 설정한 뒤 인스턴스 주소 지정
+bash scripts/reload-region-catalog.sh https://instance-host/api/wsbd
+```
+
+기본 주소는 `http://localhost:8081/api/wsbd`다. POST 응답과 GET 응답을 차례로 출력하며, 리로드 실패 시에도 현재 상태를 조회한다. 어느 요청이든 HTTP 200이 아니거나 통신에 실패하면 종료 코드 1을 반환한다. 자동 재시도·redirect·파일 업로드는 하지 않으며, 서버에 새 JSON을 미리 배포해야 한다. application.yml의 카탈로그 경로를 수정한 뒤 실행한다. 응답 간 인스턴스 ID·해시 자동 대조가 필요하면 아래 Python 스크립트를 사용한다.
 
 두 저장소의 `scripts/reload-region-catalog.py`는 Python 표준 라이브러리만 사용한다. 각 인스턴스의 POST와 GET 응답 ID·해시를 대조하고 하나라도 실패하면 종료 코드 1을 반환한다. HTTP redirect를 따라가지 않고 토큰과 서버 오류 본문을 출력하지 않는다. 자동 파일 배포·복구는 수행하지 않는다.
 
@@ -133,3 +164,5 @@ python3 scripts/reload-region-catalog.py /secure/region-targets.json --timeout 3
 ```
 
 서버별 토큰이 다르면 `tokenEnv`에 각 환경변수 이름을 지정한다. wabd 차기가 설정돼 있으면 `nextSha256`도 명시한다. 개편 시 정책 DB 처리 전후에 각각 실행할 수 있도록 wabd와 wsbd 대상 파일을 나눈다. 대상 파일에는 운영 대상 모든 인스턴스를 명시해야 하며 스크립트가 인스턴스를 자동 탐색하지 않는다. 신규 인스턴스·재배포도 새 파일을 받도록 배포 원본까지 갱신한다.
+
+파일명 전환은 각 서버의 application.yml 수정 후 수행한다. 차기 카탈로그를 전환하면 대상 검증 값 `nextSha256`도 갱신한다.

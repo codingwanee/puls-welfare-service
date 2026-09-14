@@ -49,6 +49,7 @@ class RegionCatalogRuntime<T>(
     private val activeResource: Resource,
     private val nextResource: Resource?,
     private val options: RegionReloadOptions,
+    private val resolveResources: (() -> Pair<Resource, Resource?>)? = null,
     private val build: (JsonNode, JsonNode?) -> T,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -83,8 +84,14 @@ class RegionCatalogRuntime<T>(
         val started = System.nanoTime()
         val previous = state.get().snapshot
         try {
-            val active = read(activeResource)
-            val next = nextResource?.let(::read)
+            val (selectedActive, selectedNext) = resolveResources?.invoke() ?: (activeResource to nextResource)
+            if (listOfNotNull(selectedActive, selectedNext).any {
+                    it is org.springframework.core.io.ClassPathResource || it.uri.scheme != "file"
+                }) {
+                throw RegionReloadException(422, "REGION_CATALOG_CONFIG_INVALID", "Region reload requires external file: resources")
+            }
+            val active = read(selectedActive)
+            val next = selectedNext?.let(::read)
             val unchanged = active.info.sha256 == previous.active.sha256 && next?.info?.sha256 == previous.next?.sha256
             val updated = if (unchanged) previous else candidate(active, next)
             val result = if (unchanged) "UNCHANGED" else "RELOADED"
