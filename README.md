@@ -97,3 +97,7 @@ epoch poll·전파 지연 및 Hazelcast member 수를 Prometheus로 노출한다
 ```
 
 정렬 tie-break, 전국/시도/시군구 포함과 가시성, 404/410 비노출 오류, 원천 필드와 버튼 URL 매핑, 전체 지역 카탈로그, 두 embedded member 공유, epoch generation 전환·row-missing 안전 모드, 동일 키 miss 병합, Hazelcast 종료 시 DB fallback을 자동 테스트한다.
+
+## 지역 카탈로그 무재기동 갱신
+
+외부 파일 교체 후 인스턴스별 reload API를 호출하는 [운영 절차](docs/region-catalog-reload.md)를 참고하세요. 기존 공개 지역·정책 조회 API 계약은 유지됩니다.

@@ -48,3 +48,11 @@ app:
     detail-ttl-seconds: ${POLICY_DETAIL_TTL_SECONDS:300}
     epoch-poll-millis: ${POLICY_EPOCH_POLL_MILLIS:1000}
     epoch-poll-max-stale-millis: ${POLICY_EPOCH_POLL_MAX_STALE_MILLIS:5000}
+
+region:
+  catalog:
+    sido-sigungu-resource: ${REGION_CATALOG_SIDO_SIGUNGU_RESOURCE:classpath:regions/korea_sido_sigungu_20260630.json}
+    reload:
+      enabled: ${REGION_CATALOG_RELOAD_ENABLED:false}
+      token: ${REGION_CATALOG_RELOAD_TOKEN:}
+      instance-id: ${REGION_CATALOG_INSTANCE_ID:${HOSTNAME:}}
