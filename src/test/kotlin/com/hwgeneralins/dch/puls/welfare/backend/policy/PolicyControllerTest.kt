@@ -2,14 +2,9 @@ package com.hwgeneralins.dch.puls.welfare.backend.policy
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.databind.SerializationFeature
-import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCache
-import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheGeneration
-import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyCacheProperties
 import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyProperties
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.GlobalExceptionHandler
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.PolicyController
-import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.CacheEnvelope
-import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyDetailDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyRecord
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.RegionRequest
 import com.hwgeneralins.dch.puls.welfare.backend.policy.repository.PolicyReadRepository
@@ -39,14 +34,11 @@ class PolicyControllerTest {
         .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     private val properties = PolicyProperties()
     private val catalog = RegionCatalogService(objectMapper, ClassPathResource("regions/korea_sido_sigungu_20260630.json"))
-    private val cacheProperties = PolicyCacheProperties(enabled = false)
     private val clock = Clock.fixed(Instant.parse("2026-07-30T03:00:00Z"), ZoneId.of("Asia/Seoul"))
-    private val metrics = ServingMonitoringMetrics(SimpleMeterRegistry(), clock)
+    private val metrics = ServingMonitoringMetrics(SimpleMeterRegistry())
     private val service = PolicyQueryService(
         repository, PolicyDtoMapper(), PolicySortStrategy(properties), CursorCodec(objectMapper),
-        EmptyCache(), com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator(metrics),
-        PolicyCacheGeneration(metrics, cacheProperties).apply { activate(1) },
-        cacheProperties, properties, catalog, clock, metrics,
+        properties, catalog, clock, metrics,
     )
     private val mvc = MockMvcBuilders.standaloneSetup(PolicyController(service, catalog))
         .setControllerAdvice(GlobalExceptionHandler())
@@ -238,9 +230,4 @@ private class MutablePolicyRepository : PolicyReadRepository {
         return recentUpdateCount
     }
     override fun findRegionCatalog(): Map<String, List<String>> = emptyMap()
-}
-
-private class EmptyCache : PolicyCache {
-    override fun getDetail(key: String): CacheEnvelope<PolicyDetailDto>? = null
-    override fun putDetail(key: String, value: CacheEnvelope<PolicyDetailDto>) = Unit
 }

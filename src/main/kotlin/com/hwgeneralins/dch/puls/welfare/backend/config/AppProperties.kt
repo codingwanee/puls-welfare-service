@@ -11,18 +11,3 @@ data class PolicyProperties(
         val internalFirst: Boolean = true,
     )
 }
-
-@ConfigurationProperties("app.cache")
-data class PolicyCacheProperties(
-    val enabled: Boolean = true,
-    val clusterName: String = "clovr-welfare-local",
-    val tcpIpEnabled: Boolean = true,
-    val members: List<String> = emptyList(),
-    val port: Int = 5701,
-    val portAutoIncrement: Boolean = true,
-    val backupCount: Int = 1,
-    val maxSize: Int = 10_000,
-    val detailTtlSeconds: Long = 300,
-    val epochPollMillis: Long = 1_000,
-    val epochPollMaxStaleMillis: Long = 5_000,
-)

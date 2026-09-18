@@ -3,7 +3,6 @@ package com.hwgeneralins.dch.puls.welfare.backend.policy.domain
 import com.fasterxml.jackson.annotation.JsonInclude
 import io.swagger.v3.oas.annotations.media.Schema
 import java.io.Serializable
-import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -151,8 +150,3 @@ data class SigunguDto(
     @field:Schema(description = "시군구명", example = "마포구")
     val sigunguName: String,
 )
-
-data class CacheEnvelope<T : Serializable>(
-    val value: T,
-    val validUntil: Instant,
-) : Serializable

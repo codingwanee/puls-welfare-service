@@ -18,7 +18,7 @@ class JdbcPolicyReadRepositoryTest {
     private val jdbc = JdbcTemplate(DriverManagerDataSource("jdbc:h2:mem:region-test;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", ""))
     private val repository = JdbcPolicyReadRepository(
         NamedParameterJdbcTemplate(jdbc),
-        ServingMonitoringMetrics(SimpleMeterRegistry(), Clock.systemUTC()),
+        ServingMonitoringMetrics(SimpleMeterRegistry()),
     )
 
     @BeforeEach
