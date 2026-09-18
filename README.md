@@ -29,7 +29,7 @@ query parameter는 servlet에서 UTF-8 디코딩된 값을 사용해 한글 그�
 
 목록과 상세 응답은 어드민의 공개 정책 필드명을 사용한다. 목록은 `id`, `serviceName`, `servicePurposeSummary`, `competentAgency`, `sido`, `sigungu`를 제공한다. 상세는 화면에 사용하는 정책 내용과 `onlineApplicationUrl`을 평면으로 제공하며, 선택된 원천값이 없더라도 해당 필드를 `null`로 포함한다. 지원혜택은 `SUPT_BNFT_SUMM_CN`을 `supportBenefitSummary`로 그대로 내려주고 금액을 재계산하지 않는다. `serviceId`, `dataType`, `siteUrl`, `landingUrl`, `shareUrl`은 공개 응답에서 제외한다.
 
-## 실행과 2-node cluster
+## 실행
 
 DB 비밀번호는 Jasypt `ENC(...)` 형식으로 암호화한 뒤 배포 환경의 마스킹된 변수로 주입한다.
 복호화 마스터 키는 서비스 전용 `KMS_PASSWORD`로 별도 주입하며 저장소, 배포 YAML, 로그에 남기지 않는다.
@@ -39,8 +39,7 @@ DB 비밀번호는 Jasypt `ENC(...)` 형식으로 암호화한 뒤 배포 환경
 ```bash
 KMS_PASSWORD='<serving-master-key>' DB_PASSWORD='ENC(<encrypted-db-password>)' \
 DB_URL='jdbc:mysql://db:3306/welfare' DB_USERNAME=puls_app_ro \
-HAZELCAST_CLUSTER_NAME=welfare-prod HAZELCAST_MEMBERS=10.0.1.10:5701,10.0.1.11:5701 \
-HAZELCAST_PORT=5701 SERVER_PORT=8081 ./gradlew bootRun
+SERVER_PORT=8081 ./gradlew bootRun
 ```
 
 `KMS_PASSWORD`와 DB 비밀번호 원문은 서로 다른 값이어야 한다. admin 서비스와도 마스터 키를
@@ -60,35 +59,12 @@ unset KMS_PASSWORD SECRET_TO_ENCRYPT
 
 홈 화면도 별도 API 없이 `GET /welfare-policies?limit=10`의 `items`를 사용한다.
 
-두 번째 프로세스도 같은 cluster-name/member 목록으로 실행한다. multicast와 auto-detection은 꺼져 있고 TCP/IP seed를 사용한다. Kubernetes/Eureka 등 discovery가 필요한 환경에서는 `HazelcastConfig`의 join discovery를 배포 프로필로 교체하되 cluster-name은 환경별로 분리한다. map은 상세 조회용 `app-policy-detail-v3` 하나이며, key는 `v3:e{epoch}:` prefix이고 backup-count=1, PER_NODE bounded LRU, map TTL이 적용된다. 목록 응답·엔티티·회원별 응답·읽음 상태·락은 저장하지 않는다.
-
-상세 캐시 envelope는 DB 노출 종료와 설정 TTL 중 빠른 경계까지만 유효하다. Hazelcast 예외는 miss로 취급하고 DB로 우회한다. epoch poll의 일시 장애에는 마지막으로 확인한 generation을 최대 5초 유지하고, 그 이후에는 cache generation을 비활성화해 DB로 우회한다. split brain에서도 DB가 권위 데이터다.
-
-## 무효화와 운영
-
-어드민의 모든 내용/가시성 변경 트랜잭션은 같은 트랜잭션에서 다음을 실행한다.
-
-```sql
-UPDATE SL_PBC_POLICY_CACHE_EPOCH
-   SET EPOCH = EPOCH + 1, MDF_DTHMS = CURRENT_TIMESTAMP(6)
- WHERE CACHE_NAME = 'APP_POLICY_V1';
-```
-
-영향 행이 0이면 어드민 트랜잭션을 rollback한다. 앱은 기본 1초마다 읽고 현재 generation을 새 epoch로 원자적으로 전환한다. versioned map 전체를 clear하지 않으며 이전 generation 데이터는 map TTL/LRU로 제거된다. 요청은 시작 시 generation을 캡처하므로 전환 뒤 완료된 과거 DB load도 과거 `e{epoch}` key에만 put되고 새 generation 요청에는 보이지 않는다. 동일 app instance에서 같은 generation key의 cache miss가 동시에 발생하면 한 요청만 DB를 조회하고 나머지는 그 결과를 공유한다.
-
-DDL의 단일 기준은 어드민 레포의 `docs/db/migration/V20260730_01__create_policy_cache_epoch.sql`이다. 적용 순서는 **어드민 canonical epoch DDL → 선택적 [앱 조회 인덱스](db/migration/manual/V20260730_02__create_app_policy_read_indexes.sql) → 앱 서버 → 어드민 서버**다. 앱 레포는 epoch 테이블을 중복 정의하지 않는다.
-
-앱 계정은 정책/epoch 테이블 `SELECT`만 부여한다. 운영 기본은 `spring.jpa.hibernate.ddl-auto=validate`, Hikari `read-only=true`다. JPA immutable schema entity가 핵심 가시성 컬럼을 검증하고 `SchemaProbe`가 실제 JDBC 조회 전체 컬럼과 epoch 컬럼을 시작 시 검증한다. 두 레포 어느 쪽도 운영에서 `ddl-auto=update`를 사용하지 않는다.
-
-`POLICY_CACHE_ENABLED=false`이면 Hazelcast, epoch poller와 epoch schema probe가 모두 비활성화되어 epoch 테이블 없이 DB 직접 조회 모드로 기동할 수 있다. 정책 read model 테이블 검증은 캐시 설정과 관계없이 항상 수행한다.
+목록과 상세 조회는 항상 정책 read model DB를 직접 조회한다. 앱 계정은 정책 테이블 `SELECT`만 부여한다.
+운영 기본은 `spring.jpa.hibernate.ddl-auto=validate`, Hikari `read-only=true`다. JPA immutable schema entity가
+핵심 가시성 컬럼을 검증하고 `SchemaProbe`가 실제 JDBC 조회 전체 컬럼을 시작 시 검증한다.
 
 관측 metric은 `welfare.serving.*` namespace를 정식 계약으로 사용한다. 정책 목록/상세와 repository 지연,
-목록 반환 건수, cache hit/miss·get/put·fallback, miss 병합과 inflight, cache state/generation,
-epoch poll·전파 지연 및 Hazelcast member 수를 Prometheus로 노출한다. 모든 시계열에는 `application=wsbd`가 포함된다.
-
-기존 `policy.cache.requests`, `policy.cache.fallback`, `policy.cache.hazelcast.member.count`,
-`policy.cache.generation`, `policy.cache.generation.transitions`, `policy.cache.invalidation.lag.millis`,
-`policy.cache.epoch.poll.failures`, `policy.cache.epoch.row.missing`는 대시보드 전환을 위해 한 호환 버전 동안만 병행하며 deprecated 상태다.
+목록 반환 건수를 Prometheus로 노출하며 모든 시계열에는 `application=wsbd`가 포함된다.
 
 ## 검증
 
@@ -96,7 +72,8 @@ epoch poll·전파 지연 및 Hazelcast member 수를 Prometheus로 노출한다
 ./gradlew test
 ```
 
-정렬 tie-break, 전국/시도/시군구 포함과 가시성, 404/410 비노출 오류, 원천 필드와 버튼 URL 매핑, 전체 지역 카탈로그, 두 embedded member 공유, epoch generation 전환·row-missing 안전 모드, 동일 키 miss 병합, Hazelcast 종료 시 DB fallback을 자동 테스트한다.
+정렬 tie-break, 전국/시도/시군구 포함과 가시성, 404/410 비노출 오류, 원천 필드와 버튼 URL 매핑,
+전체 지역 카탈로그와 DB 직접 조회를 자동 테스트한다.
 
 ## 지역 카탈로그 무재기동 갱신
 

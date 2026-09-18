@@ -2,7 +2,6 @@ package com.hwgeneralins.dch.puls.welfare.backend.config
 
 import org.springframework.boot.ApplicationArguments
 import org.springframework.boot.ApplicationRunner
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.stereotype.Component
 
@@ -19,14 +18,5 @@ class SchemaProbe(private val jdbc: JdbcTemplate) : ApplicationRunner {
                 EXPO_ND_DTHMS, SITE_URL, INP_DTHMS, MDF_DTHMS
                 FROM SL_PBC_PREG_WMN_WEFR_SRV WHERE 1 = 0""",
         ) { _ -> Unit }
-    }
-}
-
-/** 캐시 사용 시에만 durable epoch 스키마 계약을 검증한다. */
-@Component
-@ConditionalOnProperty(prefix = "app.cache", name = ["enabled"], havingValue = "true", matchIfMissing = true)
-class CacheEpochSchemaProbe(private val jdbc: JdbcTemplate) : ApplicationRunner {
-    override fun run(args: ApplicationArguments) {
-        jdbc.query("SELECT CACHE_NAME, EPOCH, MDF_DTHMS FROM SL_PBC_POLICY_CACHE_EPOCH WHERE 1 = 0") { _ -> Unit }
     }
 }

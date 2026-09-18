@@ -36,19 +36,6 @@ app:
     sort:
       version: ${POLICY_SORT_VERSION:v1}
       internal-first: ${POLICY_INTERNAL_FIRST:true}
-  cache:
-    enabled: ${POLICY_CACHE_ENABLED:false}
-    cluster-name: ${HAZELCAST_CLUSTER_NAME:clovr-welfare-local}
-    tcp-ip-enabled: ${HAZELCAST_TCP_ENABLED:true}
-    members: ${HAZELCAST_MEMBERS:127.0.0.1:5701,127.0.0.1:5702}
-    port: ${HAZELCAST_PORT:5701}
-    port-auto-increment: ${HAZELCAST_PORT_AUTO_INCREMENT:true}
-    backup-count: 1
-    max-size: ${POLICY_CACHE_MAX_SIZE:10000}
-    detail-ttl-seconds: ${POLICY_DETAIL_TTL_SECONDS:300}
-    epoch-poll-millis: ${POLICY_EPOCH_POLL_MILLIS:1000}
-    epoch-poll-max-stale-millis: ${POLICY_EPOCH_POLL_MAX_STALE_MILLIS:5000}
-
 region:
   catalog:
     sido-sigungu-resource: ${REGION_CATALOG_SIDO_SIGUNGU_RESOURCE:classpath:regions/korea_sido_sigungu_20260630.json}

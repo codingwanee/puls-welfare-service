@@ -1,10 +1,5 @@
 package com.hwgeneralins.dch.puls.welfare.backend.policy.service
 
-import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCache
-import com.hwgeneralins.dch.puls.welfare.backend.cache.CacheLoadCoordinator
-import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheGeneration
-import com.hwgeneralins.dch.puls.welfare.backend.cache.PolicyCacheMaps
-import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyCacheProperties
 import com.hwgeneralins.dch.puls.welfare.backend.config.PolicyProperties
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.DetailSource
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyDetailOutcome
@@ -15,7 +10,6 @@ import com.hwgeneralins.dch.puls.welfare.backend.monitoring.PolicyUpdateCountOut
 import com.hwgeneralins.dch.puls.welfare.backend.monitoring.ServingMonitoringMetrics
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.BusinessErrorCode
 import com.hwgeneralins.dch.puls.welfare.backend.policy.api.PolicyApiException
-import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.CacheEnvelope
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.CursorPageDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyDetailDto
 import com.hwgeneralins.dch.puls.welfare.backend.policy.domain.PolicyListItemDto
@@ -26,7 +20,6 @@ import com.hwgeneralins.dch.puls.welfare.backend.region.RegionCatalogService
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import java.time.Clock
-import java.time.Instant
 import java.time.LocalDateTime
 
 @Service
@@ -35,10 +28,6 @@ class PolicyQueryService(
     private val mapper: PolicyDtoMapper,
     private val sort: PolicySortStrategy,
     private val cursorCodec: CursorCodec,
-    private val cache: PolicyCache,
-    private val cacheLoadCoordinator: CacheLoadCoordinator,
-    private val cacheGeneration: PolicyCacheGeneration,
-    private val cacheProperties: PolicyCacheProperties,
     private val policyProperties: PolicyProperties,
     private val regionCatalog: RegionCatalogService,
     private val clock: Clock,
@@ -97,21 +86,9 @@ class PolicyQueryService(
 
     fun detail(id: Long): PolicyDetailDto {
         val sample = metrics.start()
-        var source = DetailSource.BYPASS
         try {
-            val generation = cacheGeneration.capture()
-            val key = generation?.let { "${PolicyCacheMaps.KEY_PREFIX}e$it:policy:$id" }
-            val result = if (key != null) {
-                cacheLoadCoordinator.getOrLoad(
-                    key = key,
-                    cached = { cache.getDetail(key)?.value },
-                    loader = { loadDetail(id, key) },
-                    source = { source = it },
-                )
-            } else {
-                loadDetail(id, null)
-            }
-            metrics.recordPolicyDetail(sample, source, PolicyDetailOutcome.SUCCESS)
+            val result = loadDetail(id)
+            metrics.recordPolicyDetail(sample, DetailSource.DATABASE, PolicyDetailOutcome.SUCCESS)
             return result
         } catch (exception: PolicyApiException) {
             val outcome = when (exception.businessCode) {
@@ -119,10 +96,10 @@ class PolicyQueryService(
                 BusinessErrorCode.POLICY_NOT_AVAILABLE -> PolicyDetailOutcome.NOT_AVAILABLE
                 else -> PolicyDetailOutcome.FAILURE
             }
-            metrics.recordPolicyDetail(sample, source, outcome)
+            metrics.recordPolicyDetail(sample, DetailSource.DATABASE, outcome)
             throw exception
         } catch (cause: Throwable) {
-            metrics.recordPolicyDetail(sample, source, PolicyDetailOutcome.FAILURE)
+            metrics.recordPolicyDetail(sample, DetailSource.DATABASE, PolicyDetailOutcome.FAILURE)
             throw cause
         }
     }
@@ -164,18 +141,14 @@ class PolicyQueryService(
         }
     }
 
-    private fun loadDetail(id: Long, cacheKey: String?): PolicyDetailDto {
+    private fun loadDetail(id: Long): PolicyDetailDto {
         val policy = repository.findById(id)
             ?: throw PolicyApiException(HttpStatus.NOT_FOUND, BusinessErrorCode.POLICY_NOT_FOUND, "정책을 찾을 수 없습니다.")
         val now = LocalDateTime.now(clock)
         if (!policy.isVisibleAt(now)) {
             throw PolicyApiException(HttpStatus.GONE, BusinessErrorCode.POLICY_NOT_AVAILABLE, "현재 이용할 수 없는 정책입니다.")
         }
-        val detail = mapper.toDetail(policy)
-        val ttlBoundary = clock.instant().plusSeconds(cacheProperties.detailTtlSeconds)
-        val exposureBoundary = policy.exposureEndAt?.atZone(clock.zone)?.toInstant()
-        cacheKey?.let { cache.putDetail(it, CacheEnvelope(detail, minOfNotNull(ttlBoundary, exposureBoundary))) }
-        return detail
+        return mapper.toDetail(policy)
     }
 
     private fun region(sido: String?, sigungu: String?): RegionRequest {
@@ -197,9 +170,6 @@ class PolicyQueryService(
         !sido.isNullOrBlank() -> PolicyListScope.SIDO
         else -> PolicyListScope.ALL
     }
-
-    private fun minOfNotNull(default: Instant, candidate: Instant?): Instant =
-        if (candidate != null && candidate.isBefore(default)) candidate else default
 
     companion object {
         const val MAX_PAGE_SIZE = 100
