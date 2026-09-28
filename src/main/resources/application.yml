@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: wsbd
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/welfare?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Seoul}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
+    hikari:
+      read-only: true
+      auto-commit: false
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:validate}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    properties:
+      hibernate.connection.provider_disables_autocommit: true
+  jackson:
+    default-property-inclusion: non_null
+server:
+  port: ${SERVER_PORT:8081}
+  servlet:
+    context-path: /api/wsbd
+management:
+  endpoints.web.exposure.include: health,info,metrics,prometheus
+  endpoint.health.probes.enabled: true
+  metrics.tags.application: ${spring.application.name}
+
+kms:
+  password: ${KMS_PASSWORD:}
+
+app:
+  policy:
+    sort:
+      version: ${POLICY_SORT_VERSION:v1}
+      internal-first: ${POLICY_INTERNAL_FIRST:true}
+region:
+  catalog:
+    sido-sigungu-resource: ${REGION_CATALOG_SIDO_SIGUNGU_RESOURCE:classpath:regions/korea_sido_sigungu_20260630.json}
+    reload:
+      enabled: ${REGION_CATALOG_RELOAD_ENABLED:false}
+      token: ${REGION_CATALOG_RELOAD_TOKEN:}
+      instance-id: ${REGION_CATALOG_INSTANCE_ID:${HOSTNAME:}}
