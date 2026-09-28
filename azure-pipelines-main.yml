@@ -1,0 +1,213 @@
+name: $(Date:yyyyMMdd).$(Rev:r)
+
+trigger:
+  batch: true
+  branches:
+    include:
+      - main
+
+pool:
+  vmImage: ubuntu-24.04
+
+variables:
+  GRADLE_USER_HOME: $(Pipeline.Workspace)/.gradle
+  wrapperJarSha256: 7d3a4ac4de1c32b59bc6a4eb8ecb8e612ccd0cf1ae1e99f66902da64df296172
+  wrapperDistributionSha256: f1771298a70f6db5a29daf62378c4e18a17fc33c9ba6b14362e0cdf40610380d
+
+steps:
+  - checkout: self
+    clean: true
+    fetchDepth: 0
+    fetchTags: true
+    persistCredentials: true
+
+  - task: JavaToolInstaller@0
+    displayName: Use JDK 17
+    inputs:
+      versionSpec: '17'
+      jdkArchitectureOption: x64
+      jdkSourceOption: PreInstalled
+
+  - bash: |
+      set -euo pipefail
+
+      actual="$(sha256sum gradle/wrapper/gradle-wrapper.jar | awk '{print $1}')"
+      if [[ "$actual" != "$(wrapperJarSha256)" ]]; then
+        echo "Gradle Wrapper JAR checksum mismatch: $actual" >&2
+        exit 1
+      fi
+
+      grep -qxF \
+        "distributionSha256Sum=$(wrapperDistributionSha256)" \
+        gradle/wrapper/gradle-wrapper.properties
+
+      chmod +x gradlew
+      ./gradlew --version
+    displayName: Verify Gradle Wrapper
+
+  - task: Cache@2
+    displayName: Cache Gradle
+    inputs:
+      key: 'gradle | "$(Agent.OS)" | **/*.gradle.kts | gradle/wrapper/gradle-wrapper.properties'
+      restoreKeys: |
+        gradle | "$(Agent.OS)"
+        gradle
+      path: $(GRADLE_USER_HOME)
+
+  - bash: |
+      set -euo pipefail
+
+      base="$(tr -d '[:space:]' < VERSION)"
+      ref="$BUILD_SOURCEBRANCH"
+      if [[ "$ref" != "refs/heads/main" ]]; then
+        echo "Production pipeline only accepts refs/heads/main: $ref" >&2
+        exit 1
+      fi
+      build_id="$BUILD_BUILDID"
+      pr_id="${SYSTEM_PULLREQUEST_PULLREQUESTID:-0}"
+      result="$(scripts/calculate-version.sh "$ref" "$build_id" "$base" "$pr_id")"
+      IFS='|' read -r version channel <<< "$result"
+      build_date_kst="$(TZ=Asia/Seoul date +%Y%m%d)"
+
+      case "$channel" in
+        develop) artifact_channel="dev" ;;
+        main) artifact_channel="prd" ;;
+        *) artifact_channel="$channel" ;;
+      esac
+
+      if [[ "$ref" == refs/tags/v* ]]; then
+        git fetch --no-tags origin main:refs/remotes/origin/main
+        if ! git merge-base --is-ancestor "$BUILD_SOURCEVERSION" refs/remotes/origin/main; then
+          echo "Release tag commit is not contained in origin/main" >&2
+          exit 1
+        fi
+      fi
+
+      echo "##vso[task.setvariable variable=projectVersion]$version"
+      echo "##vso[task.setvariable variable=releaseChannel]$channel"
+      echo "##vso[task.setvariable variable=baseVersion]$base"
+      echo "##vso[task.setvariable variable=artifactChannel]$artifact_channel"
+      echo "##vso[task.setvariable variable=buildDateKst]$build_date_kst"
+      echo "##vso[build.updatebuildnumber]$(Build.Repository.Name)-${base}-${artifact_channel}-${build_date_kst}-b${build_id}"
+      echo "projectVersion=$version"
+      echo "releaseChannel=$channel"
+      echo "artifactChannel=$artifact_channel"
+      echo "buildDateKst=$build_date_kst"
+    displayName: Calculate project version
+
+  - bash: |
+      set -euo pipefail
+
+      ./gradlew clean test bootJar \
+        --build-cache \
+        --no-daemon \
+        -PbuildVersion="$(projectVersion)" \
+        -PbuildId="$(Build.BuildId)" \
+        -PbuildCommit="$(Build.SourceVersion)" \
+        -PbuildBranch="$(Build.SourceBranch)"
+    displayName: Test and build executable JAR
+
+  - task: PublishTestResults@2
+    displayName: Publish test results
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: JUnit
+      testResultsFiles: '**/build/test-results/test/TEST-*.xml'
+      failTaskOnFailedTests: true
+      testRunTitle: '$(Build.Repository.Name) $(projectVersion)'
+
+  - bash: |
+      ./gradlew --stop || true
+    displayName: Stop Gradle daemon
+    condition: always()
+
+  - bash: |
+      set -euo pipefail
+
+      mapfile -t jars < <(
+        find build/libs \
+          -maxdepth 1 \
+          -type f \
+          -name '*.jar' \
+          ! -name '*-plain.jar' \
+          ! -name '*-tests.jar' \
+          ! -name '*-test-fixtures.jar'
+      )
+
+      if [[ "${#jars[@]}" -ne 1 ]]; then
+        echo "Expected exactly one executable JAR, found ${#jars[@]}" >&2
+        printf '%s\n' "${jars[@]}" >&2
+        exit 1
+      fi
+
+      repository="$BUILD_REPOSITORY_NAME"
+      version="$(projectVersion)"
+      build_id="$BUILD_BUILDID"
+      destination="$(Build.ArtifactStagingDirectory)/drop/${repository}/${version}/build-${build_id}"
+      output="${repository}-$(baseVersion)-$(artifactChannel)-$(buildDateKst)-b${build_id}.jar"
+
+      mkdir -p "$destination"
+      cp "${jars[0]}" "$destination/$output"
+
+      checksum="$(sha256sum "$destination/$output" | awk '{print $1}')"
+      printf '%s  %s\n' "$checksum" "$output" > "$destination/$output.sha256"
+
+      export METADATA_PATH="$destination/metadata.json"
+      export METADATA_REPOSITORY="$repository"
+      export METADATA_VERSION="$version"
+      export METADATA_CHANNEL="$(releaseChannel)"
+      export METADATA_BUILD_DATE_KST="$(buildDateKst)"
+      export METADATA_ARTIFACT_FILE_NAME="$output"
+      export METADATA_BUILD_ID="$BUILD_BUILDID"
+      export METADATA_BUILD_NUMBER="$BUILD_BUILDNUMBER"
+      export METADATA_BUILD_URI="$BUILD_BUILDURI"
+      export METADATA_SOURCE_BRANCH="$BUILD_SOURCEBRANCH"
+      export METADATA_SOURCE_COMMIT="$BUILD_SOURCEVERSION"
+      export METADATA_JAR_SHA256="$checksum"
+
+      python3 - <<'PY'
+      import json
+      import os
+      from datetime import datetime, timezone
+
+      metadata = {
+          "repository": os.environ["METADATA_REPOSITORY"],
+          "projectVersion": os.environ["METADATA_VERSION"],
+          "releaseChannel": os.environ["METADATA_CHANNEL"],
+          "buildDateKst": os.environ["METADATA_BUILD_DATE_KST"],
+          "artifactFileName": os.environ["METADATA_ARTIFACT_FILE_NAME"],
+          "buildId": os.environ["METADATA_BUILD_ID"],
+          "buildNumber": os.environ["METADATA_BUILD_NUMBER"],
+          "buildUri": os.environ["METADATA_BUILD_URI"],
+          "sourceBranch": os.environ["METADATA_SOURCE_BRANCH"],
+          "sourceCommit": os.environ["METADATA_SOURCE_COMMIT"],
+          "createdAt": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+          "jarSha256": os.environ["METADATA_JAR_SHA256"],
+      }
+
+      with open(os.environ["METADATA_PATH"], "w", encoding="utf-8") as output:
+          json.dump(metadata, output, ensure_ascii=False, indent=2)
+          output.write("\n")
+      PY
+
+      find "$(Build.ArtifactStagingDirectory)/drop" -type f -print
+    displayName: Stage drop
+    condition: |
+      and(
+        succeeded(),
+        ne(variables['Build.Reason'], 'PullRequest'),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      )
+
+  - task: PublishPipelineArtifact@1
+    displayName: Publish drop
+    condition: |
+      and(
+        succeeded(),
+        ne(variables['Build.Reason'], 'PullRequest'),
+        eq(variables['Build.SourceBranch'], 'refs/heads/main')
+      )
+    inputs:
+      targetPath: $(Build.ArtifactStagingDirectory)/drop
+      artifact: drop
+      publishLocation: pipeline

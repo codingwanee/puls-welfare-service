@@ -4,6 +4,8 @@
 
 이 저장소는 Gradle Wrapper로 테스트와 Spring Boot 실행 JAR를 빌드하고, 추적 가능한 개발·릴리스 산출물을 Azure Pipeline Artifact `drop`으로 게시한다. 프로젝트 버전의 단일 기준은 루트의 `VERSION` 파일이다.
 
+`azure-pipelines.yml`은 develop·release·tag 빌드를, `azure-pipelines-main.yml`은 main 운영 빌드만 담당한다. Azure DevOps에서도 두 YAML을 서로 다른 Pipeline 정의로 등록한다.
+
 ## 버전 기준
 
 `VERSION`은 prerelease 접미사가 없는 SemVer `MAJOR.MINOR.PATCH` 형식으로 관리한다. 현재 운영 기준 버전은 `1.0.0`이다. 로컬 빌드는 별도 property가 없으면 `1.0.0-SNAPSHOT`을 사용하고, Pipeline은 `-PbuildVersion`으로 계산된 버전을 주입한다.
@@ -60,7 +62,7 @@ drop/
             └── metadata.json
 ```
 
-develop 산출물의 `<channel>`은 `dev`, main은 `main`이다. Pipeline 실행 이름도 동일한 버전·채널·KST 일자·BuildId 순서를 사용한다.
+develop 산출물의 `<channel>`은 `dev`, main 운영 산출물은 `prd`다. Pipeline 실행 이름도 동일한 버전·채널·KST 일자·BuildId 순서를 사용한다. main Pipeline을 다른 ref로 수동 실행하면 빌드를 즉시 실패시킨다.
 
 `metadata.json`에는 repository, projectVersion, releaseChannel, buildDateKst, artifactFileName, buildId, buildNumber, buildUri, sourceBranch, sourceCommit, UTC 생성 시각, JAR SHA-256을 기록한다.
 
@@ -83,7 +85,7 @@ develop 산출물의 `<channel>`은 `dev`, main은 `main`이다. Pipeline 실행
 
 YAML PR이 검증된 뒤 각 저장소에서 다음을 사람이 설정한다.
 
-- YAML 파일을 선택해 Pipeline을 생성한다.
+- `azure-pipelines.yml`과 `azure-pipelines-main.yml`을 각각 서로 다른 Pipeline으로 생성한다.
 - `develop`과 `main`에 직접 push를 제한하고 PR을 사용한다.
 - 두 브랜치에 해당 Pipeline을 Required, Automatic Build Validation으로 연결한다.
 - 최소 승인자와 Required Reviewer 정책은 설정하지 않는다.
