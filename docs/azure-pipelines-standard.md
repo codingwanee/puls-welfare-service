@@ -6,16 +6,16 @@
 
 ## 버전 기준
 
-`VERSION`은 prerelease 접미사가 없는 SemVer `MAJOR.MINOR.PATCH` 형식으로 관리한다. 현재 초기값은 `0.1.0`이다. 로컬 빌드는 별도 property가 없으면 `0.1.0-SNAPSHOT`을 사용하고, Pipeline은 `-PbuildVersion`으로 계산된 버전을 주입한다.
+`VERSION`은 prerelease 접미사가 없는 SemVer `MAJOR.MINOR.PATCH` 형식으로 관리한다. 현재 운영 기준 버전은 `1.0.0`이다. 로컬 빌드는 별도 property가 없으면 `1.0.0-SNAPSHOT`을 사용하고, Pipeline은 `-PbuildVersion`으로 계산된 버전을 주입한다.
 
 | 입력 ref | 계산 버전 예시 | Drop 게시 |
 |---|---|---|
-| develop 대상 PR | `0.1.0-pr.48753.1301` | 아니요 |
-| `refs/heads/develop` | `0.1.0-dev.1302` | 예 |
-| `refs/heads/release/0.1.0` | `0.1.0-rc.1303` | 예 |
-| `refs/heads/main` | `0.1.0-main.1304` | 아니요 |
-| `refs/tags/v0.1.0` | `0.1.0` | 예 |
-| 기타 수동 빌드 | `0.1.0-feature.<branch>.1305` | 아니요 |
+| develop 대상 PR | `1.0.0-pr.48753.1301` | 아니요 |
+| `refs/heads/develop` | `1.0.0-dev.1302` | 예 |
+| `refs/heads/release/1.0.0` | `1.0.0-rc.1303` | 예 |
+| `refs/heads/main` | `1.0.0-main.1304` | 예 |
+| `refs/tags/v1.0.0` | `1.0.0` | 예 |
+| 기타 수동 빌드 | `1.0.0-feature.<branch>.1305` | 아니요 |
 
 `release/X.Y.Z`와 태그 `vX.Y.Z`의 버전은 반드시 `VERSION`과 같아야 한다. 정식 태그의 commit은 `origin/main`에 포함되어 있어야 한다. 같은 태그를 다시 빌드해도 Azure `BuildId`, 빌드 폴더, metadata로 실행을 구분한다.
 
@@ -30,7 +30,7 @@
 7. JUnit 결과를 게시한다.
 8. 실행 가능한 JAR가 정확히 하나인지 확인한다.
 9. JAR, SHA-256, `metadata.json`을 staging한다.
-10. develop, release, 정식 태그 빌드만 Pipeline Artifact `drop`으로 게시한다.
+10. develop, main, release, 정식 태그 빌드만 Pipeline Artifact `drop`으로 게시한다.
 
 PR 검증은 Azure Repos Branch Policy의 Build Validation으로 실행한다. Azure Repos용 YAML에는 `pr:` 블록을 두지 않는다. feature branch push를 CI trigger에 넣지 않아 PR validation과의 중복 실행을 피한다.
 
@@ -55,12 +55,14 @@ drop/
 └── <repository>/
     └── <projectVersion>/
         └── build-<BuildId>/
-            ├── <repository>-<projectVersion>.jar
-            ├── <repository>-<projectVersion>.jar.sha256
+            ├── <repository>-<baseVersion>-<channel>-<KST-yyyyMMdd>-b<BuildId>.jar
+            ├── <repository>-<baseVersion>-<channel>-<KST-yyyyMMdd>-b<BuildId>.jar.sha256
             └── metadata.json
 ```
 
-`metadata.json`에는 repository, projectVersion, releaseChannel, buildId, buildNumber, buildUri, sourceBranch, sourceCommit, UTC 생성 시각, JAR SHA-256을 기록한다.
+develop 산출물의 `<channel>`은 `dev`, main은 `main`이다. Pipeline 실행 이름도 동일한 버전·채널·KST 일자·BuildId 순서를 사용한다.
+
+`metadata.json`에는 repository, projectVersion, releaseChannel, buildDateKst, artifactFileName, buildId, buildNumber, buildUri, sourceBranch, sourceCommit, UTC 생성 시각, JAR SHA-256을 기록한다.
 
 ## 실패 조건
 
@@ -89,7 +91,7 @@ YAML PR이 검증된 뒤 각 저장소에서 다음을 사람이 설정한다.
 - Pipeline retention과 Artifact retention 기간을 결정한다.
 - Pipeline job authorization scope를 현재 프로젝트로 제한한다.
 
-이번 구현에서는 `main`, `release/*`, tag를 생성하지 않으며 Branch Policy나 권한도 변경하지 않는다. Serving의 기존 main은 develop보다 오래되었고 Admin에는 아직 main이 없으므로, Pipeline 검증 후 별도 승인 하에 release/main 기준선을 구성한다.
+기본 브랜치는 `develop`을 유지하고, 운영 승격은 `develop → main` PR로 수행한다. `main`에는 직접 push를 제한하고 Required Automatic Build Validation을 적용한다.
 
 ## 로컬 검증
 
@@ -101,7 +103,7 @@ CI manifest 주입 예시:
 
 ```bash
 ./gradlew clean test bootJar --no-daemon --build-cache \
-  -PbuildVersion=0.1.0-dev.999 \
+  -PbuildVersion=1.0.0-dev.999 \
   -PbuildId=999 \
   -PbuildCommit=0123456789abcdef \
   -PbuildBranch=refs/heads/develop
