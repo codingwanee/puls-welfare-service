@@ -68,6 +68,9 @@ unset KMS_PASSWORD SECRET_TO_ENCRYPT
 
 ## 검증
 
+가입자 10만 명 기준 DAU·목표 RPS 산정과 k6 부하 테스트 실행 방법은
+[Serving API 성능 테스트](docs/serving-performance-test.md)를 참고한다.
+
 ```bash
 ./gradlew test
 ```
